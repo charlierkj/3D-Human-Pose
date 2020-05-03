@@ -5,6 +5,7 @@ import glob
 import matplotlib.pyplot as plt
 
 import torch
+import cv2
 
 IMAGENET_MEAN = np.array([0.485, 0.456, 0.406])
 IMAGENET_STD = np.array([0.229, 0.224, 0.225])
@@ -28,8 +29,6 @@ CONNECTIVITY_HUMAN36M = [
     (14, 15)
     ]
     
-    
-
 
 def proj_to_2D(proj_mat, pts_3d):
     pts_3d_homo = to_homogeneous_coords(pts_3d) # 4 x n
@@ -48,12 +47,27 @@ def to_cartesian_coords(pts_homo):
     """conversion from homogeneous to cartesian coodinates."""
     return pts_homo[:-1, :] / pts_homo[-1, :]
 
-def make_gif(temp_folder, write_path):
+def make_gif(temp_folder, write_path, remove_imgs=False):
     with imageio.get_writer(write_path, mode='I') as writer:
         for image in sorted(glob.glob(os.path.join(temp_folder, '*.png'))):
             writer.append_data(imageio.imread(image))
-            os.remove(image)
+            if remove_imgs:
+                os.remove(image)
     writer.close()
+
+def make_vid(temp_folder, write_path, fps=30, size=None, remove_imgs=False):
+    imgs_list_sorted = sorted(glob.glob(os.path.join(temp_folder, '*.png')))
+    if size is None:
+        img_0 = cv2.imread(imgs_list_sorted[0])
+        height, width, channels = img_0.shape
+        size = (width, height)
+    fourcc = cv2.VideoWriter_fourcc(*'mp4v')
+    vid_writer = cv2.VideoWriter(write_path, fourcc, fps, size)
+    for image in imgs_list_sorted:
+        vid_writer.write(cv2.imread(image))
+        if remove_imgs:
+            os.remove(image)
+    vid_writer.release()
 
 def draw_pose_2D(jnts_2d, ax, point_size=2, line_width=1):
     if torch.is_tensor(jnts_2d):
