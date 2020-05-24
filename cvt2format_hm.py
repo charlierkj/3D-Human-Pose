@@ -73,10 +73,11 @@ def generate_label(path):
             height = camera_dict['height']
             fov = camera_dict['fov']
 
-            K = get_K(width, height, width/2) # intrinsics
-            R_c2w = get_R(rot[2], rot[0], rot[1])
+            cam = Camera(pos[0], pos[1], pos[2], rot[2], rot[0], rot[1], width, height, width/2)
+            K = cam.K # intrinsics
+            R_c2w = cam.R
             R_w2c = R_c2w.T # rotation
-            T_c2w = get_T(pos[0], pos[1], pos[2])
+            T_c2w = cam.T
             T_w2c = -R_w2c @ T_c2w # translation
         
             camera_retval = retval['cameras'][subj_idx, camera_idx]
@@ -85,7 +86,7 @@ def generate_label(path):
             camera_retval['t'] = np.array([[0, 1, 0], [0, 0, 1], [1, 0, 0]]) @ T_w2c # rows re-aligned
             camera_retval['dist'] = np.zeros(5)
 
-        # hardcode bounding boxes
+        # hardcoded bounding boxes
         bbox = np.array([[0, 80, 480, 560]])
         bboxes = np.tile(bbox, (len(retval['camera_names']), 1))
 
@@ -163,9 +164,10 @@ def plot_joints_2D(img_path, skeleton_file, camera_file):
     with open(camera_file) as camera_json:
         camera = json.load(camera_json)
 
-    proj_mat = get_P(camera['location'][0], camera['location'][1], camera['location'][2],
-                     camera['rotation'][2], camera['rotation'][0], camera['rotation'][1],
-                     camera['width'], camera['height'], camera['width'] / 2) # 3 x 4
+    cam = Camera(camera['location'][0], camera['location'][1], camera['location'][2],
+                 camera['rotation'][2], camera['rotation'][0], camera['rotation'][1],
+                 camera['width'], camera['height'], camera['width'] / 2)
+    proj_mat = cam.get_P() # 3 x 4
     pts_2d_homo = proj_mat @ pts_3d_homo # 3 x n
     pts_2d = np.zeros((2, pts_2d_homo.shape[1])) # 2 x n
     pts_2d[0, :] = pts_2d_homo[0, :] / pts_2d_homo[2, :]
