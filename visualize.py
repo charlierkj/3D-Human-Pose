@@ -89,7 +89,7 @@ def visualize_pred(images, proj_mats, joints_3d_gt, joints_3d_pred, size=5):
         images = images.cpu().numpy()
     images = np.moveaxis(images, 1, -1) # num_views x C x H x W -> num_views x H x W x C
     images = np.clip(255 * (images * IMAGENET_STD + IMAGENET_MEAN), 0, 255).astype(np.uint8) # denormalize
-    images = images[..., (2, 1, 0)] # BGR -> RGB
+    # images = images[..., (2, 1, 0)] # BGR -> RGB
     
     for view_idx in range(num_views):
         axes[0, view_idx].imshow(images[view_idx, ::])

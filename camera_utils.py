@@ -6,6 +6,7 @@ class Camera(object):
         self.K = self.set_K(w, h, fov)
         self.R = self.set_R(roll, pitch, yaw)
         self.T = self.set_T(x, y, z)
+        self.o = [w/2, h/2] # principle point in pixel
 
     def set_K(self, w, h, fov):
         """get 3x3 intrinsic matrix."""
@@ -62,7 +63,10 @@ class Camera(object):
         return P
 
     def update_after_crop(self, bbox):
-        upper_left_row, upper_left_col, lower_right_row_row, lower_right_col = bbox
-        self.K[0, 2] = self.K[0, 2] - upper_left_col
-        self.K[1, 2] = self.K[1, 2] - upper_left_row
+        upper_left_x, upper_left_y, lower_right_x, lower_right_y = bbox
+        new_ox = (lower_right_x - upper_left_x) / 2
+        new_oy = (lower_right_y - upper_left_y) / 2
+        self.o = (new_ox, new_oy)
+        self.K[0, 2] = self.o[0]
+        self.K[1, 2] = self.o[1]
     
