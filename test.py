@@ -12,7 +12,7 @@ import visualize
 
 
 def multiview_test(model, dataloader, device, show_img=False, make_gif=False, make_vid=False):
-    subj_num_batches = 15
+    subj_num_batches = 10
     model.to(device)
     model.eval()
     with torch.no_grad():
@@ -70,8 +70,8 @@ if __name__ == "__main__":
     model.load_state_dict(state_dict, strict=True)
 
     print("Loading data..")
-    data_path = 'data/multiview_data_2/multiview_data'
-    dataset = MultiView_SynData(data_path, bbox=[80, 0, 560, 480])
-    dataloader = datasets_utils.syndata_loader(dataset, batch_size=4)
+    data_path = 'data/test_01/multiview_data'
+    dataset = MultiView_SynData(data_path, bbox=[80, 0, 560, 480], ori_form=1)
+    dataloader = datasets_utils.syndata_loader(dataset, batch_size=1)
 
     multiview_test(model, dataloader, device)

@@ -15,15 +15,15 @@ joints_name = [
         "foot_l",
         "pelvis",
         "spine_02",
-        "head",
-        "head_end",
+        "head", # thorax
+        "head_end", # head
         "hand_r",
         "lowerarm_r",
         "upperarm_r",
         "upperarm_l",
         "lowerarm_l",
         "hand_l",
-        "neck_01"
+        "neck_01" # neck/nose
         ]
 
 
@@ -64,7 +64,7 @@ def generate_label(path):
         subj_path = os.path.join(data_path, subj_folder)
         # fill retval['cameras']
         for camera_idx in range(len(retval['camera_names'])):
-            camera_file = os.path.join(subj_path, "camera_%d.json" % (camera_idx + 1))
+            camera_file = os.path.join(subj_path, "camera_%s.json" % retval['camera_names'][camera_idx])
             with open(camera_file) as json_file:
                 camera_dict = json.load(json_file)
             pos = camera_dict['location']
