@@ -10,6 +10,7 @@ import torchvision as tv
 from PIL import Image
 
 from camera_utils import *
+import datasets.utils as datasets_utils
 
 IMAGENET_MEAN = (0.485, 0.456, 0.406)
 IMAGENET_STD = (0.229, 0.224, 0.225)
@@ -40,25 +41,7 @@ class MultiView_SynData(td.Dataset):
             ])
 
         # joint names
-        self.joints_name = [
-            "foot_r",
-            "calf_r",
-            "thigh_r",
-            "thigh_l",
-            "calf_l",
-            "foot_l",
-            "pelvis",
-            "spine_02",
-            "neck_01",
-            "head",
-            "hand_r",
-            "lowerarm_r",
-            "upperarm_r",
-            "upperarm_l",
-            "lowerarm_l",
-            "hand_l",
-            "head"
-            ]
+        self.joints_name = datasets_utils.Joints_SynData
         self.num_jnts = len(self.joints_name)
 
         # original form: 0
@@ -200,16 +183,7 @@ class MultiView_SynData(td.Dataset):
         data['images'] = images
         data['cameras'] = cameras
 
-        with open(skeleton_path) as skeleton_json:
-            skeleton = json.load(skeleton_json)
-
-        all_joints = {joint["Name"].lower(): joint["KpWorld"] for joint in skeleton} # lowercase
-        x_keypts = np.array([all_joints[jnt]['X'] for jnt in self.joints_name])
-        y_keypts = np.array([all_joints[jnt]['Y'] for jnt in self.joints_name])
-        z_keypts = np.array([all_joints[jnt]['Z'] for jnt in self.joints_name])
-        keypoints = np.hstack((x_keypts.reshape(self.num_jnts,1),\
-                               y_keypts.reshape(self.num_jnts,1),\
-                               z_keypts.reshape(self.num_jnts,1)))
+        keypoints = datasets_utils.load_joints(self.joints_name, skeleton_path)
         keypts_tensor = torch.from_numpy(keypoints)
         data['joints_3d_gt'] = keypts_tensor # joints groundtruth, tensor of size n x 3
 

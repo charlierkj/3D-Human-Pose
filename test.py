@@ -10,17 +10,42 @@ import datasets.utils as datasets_utils
 
 import visualize
 
-def evaluate(joints_3d_pred, joints_3d_gt_batch, joints_3d_valid_batch):
+
+def evaluate_one_scene(joints_3d_pred_path, scene_folder, invalid_joints=(9, 16)):
+    """joints_3d_pred_path: the path where npy file is stored.
+    scene_folder: the folder under which the input images and groundtruth jsons are stored."""
+    joints_3d_pred = np.load(joints_3d_pred_path)
+    num_frames, num_joints = joints_3d_pred.shape[0], joints_3d_pred.shape[1]
+    joints_3d_valid = np.ones(shape=(num_frames, num_joints, 1))
+    joints_3d_valid[:, invalid_joints, :] = 0
+    joints_3d_gt = np.empty(shape=(num_frames, num_joints, 3))
+    for frame_idx in range(num_frames):
+        joints_name = datasets_utils.Joints_SynData
+        skeleton_path = os.path.join(scene_folder, 'skeleton_%06d.json' % frame_idx)
+        joints_3d_gt[frame_idx, :, :] = datasets_utils.load_joints(joints_name, skeleton_path)
+    error_frames = evaluate_one_batch(joints_3d_pred, joints_3d_gt, joints_3d_valid) # size of num_frames
+    error_mean = float(error_frames.mean())
+    return error_mean    
+    
+def evaluate_one_batch(joints_3d_pred, joints_3d_gt_batch, joints_3d_valid_batch):
     """MPJPE (mean per joint position error) in cm"""
-    error_average = torch.sqrt(((joints_3d_pred - joints_3d_gt_batch) ** 2).sum(2)) # batch_size x num_joints
-    error_average = joints_3d_valid_batch * error_average.unsqueeze(2) # batch_size x num_joints x 1
-    error_average = error_average.mean((1, 2)) # mean error per sample in batch
-    return error_average
+    if isinstance(joints_3d_pred, np.ndarray):
+        error_batch = np.sqrt(((joints_3d_pred - joints_3d_gt_batch) ** 2).sum(2))
+        error_batch = joints_3d_valid_batch * np.expand_dims(error_batch, axis=2)
+        error_batch = error_batch.mean((1, 2))
+    elif torch.is_tensor(joints_3d_pred):
+        error_batch = torch.sqrt(((joints_3d_pred - joints_3d_gt_batch) ** 2).sum(2)) # batch_size x num_joints
+        error_batch = joints_3d_valid_batch * error_batch.unsqueeze(2) # batch_size x num_joints x 1
+        error_batch = error_batch.mean((1, 2)) # mean error per sample in batch
+    return error_batch
+
 
 def multiview_test(model, dataloader, device, save_folder, show_img=False, make_gif=False, make_vid=False):
     batches_per_scene = 15
     model.to(device)
     model.eval()
+
+    scene_names = []
     metrics = {}
     with torch.no_grad():
         for iter_idx, (images_batch, proj_mats_batch, joints_3d_gt_batch, joints_3d_valid_batch) in enumerate(dataloader):
@@ -33,63 +58,63 @@ def multiview_test(model, dataloader, device, save_folder, show_img=False, make_
             joints_3d_valid_batch = joints_3d_valid_batch.to(device)
             
             joints_3d_pred, joints_2d_pred, heatmaps_pred, confidences_pred = model(images_batch, proj_mats_batch)
-            
+
             if iter_idx % batches_per_scene == 0:
-                imgs_folder = os.path.join('imgs', 'scene_%03d' % (iter_idx // batches_per_scene + 1))
-                imgs_folder = os.path.join(save_folder, imgs_folder)
-                if not os.path.exists(imgs_folder):
-                    os.makedirs(imgs_folder)
+                scene_name = 'anim_%03d' % (5 * iter_idx // batches_per_scene)
+                print(scene_name)
+                scene_names.append(scene_name)
+                joints_3d_pred_np = np.empty([0,] + list(joints_3d_pred.detach().cpu().numpy().shape[1::]))
+                joints_2d_pred_np = np.empty([0,] + list(joints_2d_pred.detach().cpu().numpy().shape[1::]))
+                heatmaps_pred_np = np.empty([0,] + list(heatmaps_pred.detach().cpu().numpy().shape[1::]))
+                confidences_pred_np = np.empty([0,] + list(confidences_pred.detach().cpu().numpy().shape[1::]))
 
-                # reset per scene error and sample counter to zero
-                error_per_scene = 0
-                sample_counter = 0
+                preds_folder = os.path.join(save_folder, 'preds', scene_name)
+                os.makedirs(preds_folder, exist_ok=True)
 
-            batch_size = images_batch.shape[0]
-            for idx_in_batch in range(batch_size):
-                vis_img = visualize.visualize_pred(images_batch[idx_in_batch, ::], proj_mats_batch[idx_in_batch, ::], \
-                                                   joints_3d_gt_batch[idx_in_batch, ::], joints_3d_pred[idx_in_batch, ::])
-                im = Image.fromarray(vis_img)
-                if show_img:
-                    im.show()
-                # img_name = "%02d.png" % (iter_idx % subj_num_batches)
-                img_name = "%06d.png" % (iter_idx % batches_per_scene * batch_size + idx_in_batch)
-                img_path = os.path.join(imgs_folder, img_name)
-                im.save(img_path)
-
-            # evaluate
-            error_batch = evaluate(joints_3d_pred, joints_3d_gt_batch, joints_3d_valid_batch)
-            error_per_scene += error_batch.sum()
-            sample_counter += error_batch.shape[0]
-
+            joints_3d_pred_np = np.concatenate((joints_3d_pred_np, joints_3d_pred.detach().cpu().numpy()), axis=0)
+            joints_2d_pred_np = np.concatenate((joints_2d_pred_np, joints_2d_pred.detach().cpu().numpy()), axis=0)
+            heatmaps_pred_np = np.concatenate((heatmaps_pred_np, heatmaps_pred.detach().cpu().numpy()), axis=0)
+            confidences_pred_np = np.concatenate((confidences_pred_np, confidences_pred.detach().cpu().numpy()), axis=0)
+            
             if iter_idx % batches_per_scene == batches_per_scene - 1:
-                error_mean = error_per_scene / sample_counter
-                print(error_mean)
-                metrics['scene_%03d' % (iter_idx // batches_per_scene + 1)] = float(error_mean.detach().cpu().numpy())
-                
+                # save intermediate results
+                print('saving intermediate results...')
+                np.save(os.path.join(preds_folder, 'joints_3d.npy'), joints_3d_pred_np) # numpy array of size (num_frames, num_joints, 3)
+                np.save(os.path.join(preds_folder, 'joints_2d.npy'), joints_2d_pred_np) # numpy array of size (num_frames, num_views, num_joints, 2)
+                #np.save(os.path.join(preds_folder, 'heatmaps.npy'), heatmaps_pred_np) # numpy array of size (num_frames, num_views, num_joints, 120, 120)
+                np.save(os.path.join(preds_folder, 'confidences.npy'), confidences_pred_np) # numpy array of size (num_frames, num_views, num_joints)
+
+    # save evaluations and visualizations
+    for scene_name in scene_names:
+        scene_folder = os.path.join(dataloader.dataset.basepath, 'S0', scene_name) # subj currently hardcoded
+        # evaluate
+        joints_3d_pred_path = os.path.join(save_folder, 'preds', scene_name, 'joints_3d.npy')
+        error_per_scene = evaluate_one_scene(joints_3d_pred_path, scene_folder, invalid_joints=(9, 16))
+        metrics[scene_name] = error_per_scene
+
+        # save images
+        print('saving result images...')
+        imgs_folder = os.path.join(save_folder, 'imgs', scene_name)
+        visualize.draw_one_scene(joints_3d_pred_path, scene_folder, imgs_folder, show_img=show_img)
+
+        # save gifs/videos (optioanl)
+        if make_gif:
+            print('saving result gifs...')
+            gif_name = os.path.join(save_folder, 'gifs', '%s.gif' % scene_name)
+            visualize.make_gif(imgs_folder, gif_name)
+
+        if make_vid:
+            print('saving result videos...')
+            vid_name = os.path.join(save_folder, 'vids', '%s.mp4' % scene_name)
+            visualize.make_vid(imgs_folder, vid_name)
+            
+    # save evaluation
+    print('saving evaluation results...')
     metrics_path = os.path.join(save_folder, 'metrics.json')
     with open(metrics_path, 'w') as metrics_json:
         json.dump(metrics, metrics_json)
 
-    imgs_base_folder = os.path.join(save_folder, 'imgs')
-    if make_gif:
-        gif_folder = os.path.join(save_folder, 'gifs')
-        if not os.path.exists(gif_folder):
-            os.mkdir(gif_folder)
-        for scene_name in os.listdir(imgs_base_folder):
-            imgs_folder = os.path.join(imgs_base_folder, scene_name)
-            gif_name = os.path.join(gif_folder, '%s.gif' % scene_name)
-            visualize.make_gif(imgs_folder, gif_name)
-
-    if make_vid:
-        vid_folder = os.path.join(save_folder, 'vids')
-        if not os.path.exists(vid_folder):
-            os.mkdir(vid_folder)
-        for scene_name in os.listdir(imgs_base_folder):
-            imgs_folder = os.path.join(imgs_base_folder, scene_name)
-            vid_name = os.path.join(vid_folder, '%s.mp4' % scene_name)
-            visualize.make_vid(imgs_folder, vid_name)
     
-
 if __name__ == "__main__":
 
     device = torch.device(0)

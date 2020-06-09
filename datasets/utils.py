@@ -1,10 +1,48 @@
+import json
 import numpy as np
 import torch
 import torch.utils.data as td
 
+Joints_SynData = [
+    "foot_r",
+    "calf_r",
+    "thigh_r",
+    "thigh_l",
+    "calf_l",
+    "foot_l",
+    "pelvis",
+    "spine_02",
+    "neck_01",
+    "head",
+    "hand_r",
+    "lowerarm_r",
+    "upperarm_r",
+    "upperarm_l",
+    "lowerarm_l",
+    "hand_l",
+    "head"
+    ]
+
+
+def load_joints(joints_name, skeleton_path):
+    # return numpy array of size num_joints x 3.
+    num_jnts = len(joints_name)
+    with open(skeleton_path) as skeleton_json:
+        skeleton = json.load(skeleton_json)
+        
+    all_joints = {joint["Name"].lower(): joint["KpWorld"] for joint in skeleton} # lowercase
+    x_keypts = np.array([all_joints[jnt]['X'] for jnt in joints_name])
+    y_keypts = np.array([all_joints[jnt]['Y'] for jnt in joints_name])
+    z_keypts = np.array([all_joints[jnt]['Z'] for jnt in joints_name])
+    keypoints = np.hstack((x_keypts.reshape(num_jnts,1),\
+                           y_keypts.reshape(num_jnts,1),\
+                           z_keypts.reshape(num_jnts,1)))
+    return keypoints
+
+    
 def collate_fn(batch):
     # mainly used to convert numpy to tensor and concatenate,
-    # with making sure the data type of tensors is float
+    # with making sure the data type of tensors is float.
     samples = list(d for d in batch if d is not None)
     if len(samples) == 0:
         print("current batch is empty")
