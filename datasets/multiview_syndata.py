@@ -17,8 +17,9 @@ IMAGENET_STD = (0.229, 0.224, 0.225)
 
 class MultiView_SynData(td.Dataset):
 
-    def __init__(self, path, num_camera=4, bbox=None, ori_form=1):
+    def __init__(self, path, num_camera=4, invalid_joints=None, bbox=None, ori_form=1):
         """
+        invalid_joints: tuple of indices for invalid joints; associated joints will not be used in evaluation.
         bbox: [upper_left_x, upper_left_y, lower_right-x, lower_right_y].
         ori_form: original form of how the synthetic data is stored, currently takes value 0 or 1.
         """
@@ -29,6 +30,8 @@ class MultiView_SynData(td.Dataset):
         self.camera_names = []
         self.cameras = {}
         self.len = 0
+
+        self.invalid_jnts = () if invalid_joints is None else invalid_joints
 
         # torchvision transforms
         self.transform = tv.transforms.Compose([
@@ -46,7 +49,7 @@ class MultiView_SynData(td.Dataset):
             "foot_l",
             "pelvis",
             "spine_02",
-            "head",
+            "neck_01",
             "head",
             "hand_r",
             "lowerarm_r",
@@ -54,7 +57,7 @@ class MultiView_SynData(td.Dataset):
             "upperarm_l",
             "lowerarm_l",
             "hand_l",
-            "neck_01"
+            "head"
             ]
         self.num_jnts = len(self.joints_name)
 
@@ -209,6 +212,10 @@ class MultiView_SynData(td.Dataset):
                                z_keypts.reshape(self.num_jnts,1)))
         keypts_tensor = torch.from_numpy(keypoints)
         data['joints_3d_gt'] = keypts_tensor # joints groundtruth, tensor of size n x 3
+
+        keypts_valid = torch.ones(self.num_jnts, 1)
+        keypts_valid[self.invalid_jnts, :] = 0
+        data['joints_3d_valid'] = keypts_valid # binary tensor of size n x 1
         
         return data
             

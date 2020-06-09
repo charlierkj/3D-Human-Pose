@@ -15,7 +15,7 @@ joints_name = [
         "foot_l",
         "pelvis",
         "spine_02",
-        "head", # thorax
+        "neck_01", # thorax
         "head_end", # head
         "hand_r",
         "lowerarm_r",
@@ -23,7 +23,7 @@ joints_name = [
         "upperarm_l",
         "lowerarm_l",
         "hand_l",
-        "neck_01" # neck/nose
+        "head" # neck/nose
         ]
 
 

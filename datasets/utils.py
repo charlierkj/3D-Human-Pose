@@ -14,10 +14,11 @@ def collate_fn(batch):
     proj_mats_batch = torch.stack([torch.stack([torch.from_numpy(cam.get_P()) for cam in sample['cameras']], dim=0)\
                                    for sample in samples], dim=0) # batch_size x num_views x 3 x 4
     joints_3d_gt_batch = torch.stack([sample['joints_3d_gt'] for sample in samples], dim=0) # batch_size x num_joints x 3
+    joints_3d_valid_batch = torch.stack([sample['joints_3d_valid'] for sample in samples], dim=0) # batch_size x num_joints x 1
 
-    images_batch, proj_mats_batch, joints_3d_gt_batch \
-                  = images_batch.type(torch.float32), proj_mats_batch.type(torch.float32), joints_3d_gt_batch.type(torch.float32)
-    return images_batch, proj_mats_batch, joints_3d_gt_batch
+    images_batch, proj_mats_batch, joints_3d_gt_batch, joints_3d_valid_batch \
+                  = images_batch.type(torch.float32), proj_mats_batch.type(torch.float32), joints_3d_gt_batch.type(torch.float32), joints_3d_valid_batch.type(torch.float32)
+    return images_batch, proj_mats_batch, joints_3d_gt_batch, joints_3d_valid_batch
 
 
 def syndata_loader(dataset, batch_size=1, shuffle=False):
