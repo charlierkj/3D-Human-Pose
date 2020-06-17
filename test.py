@@ -41,14 +41,17 @@ def evaluate_one_batch(joints_3d_pred, joints_3d_gt_batch, joints_3d_valid_batch
 
 
 def multiview_test(model, dataloader, device, save_folder, show_img=False, make_gif=False, make_vid=False):
-    batches_per_scene = 15
+    frames_per_scene = 60
+    
     model.to(device)
     model.eval()
 
-    scene_names = []
+    #scene_names = []
+    subj_names = []
+    anim_names = []
     metrics = {}
     with torch.no_grad():
-        for iter_idx, (images_batch, proj_mats_batch, joints_3d_gt_batch, joints_3d_valid_batch) in enumerate(dataloader):
+        for iter_idx, (images_batch, proj_mats_batch, joints_3d_gt_batch, joints_3d_valid_batch, info_batch) in enumerate(dataloader):
             if images_batch is None:
                 continue
 
@@ -56,27 +59,35 @@ def multiview_test(model, dataloader, device, save_folder, show_img=False, make_
             proj_mats_batch = proj_mats_batch.to(device)
             joints_3d_gt_batch = joints_3d_gt_batch.to(device)
             joints_3d_valid_batch = joints_3d_valid_batch.to(device)
+
+            batch_size = images_batch.shape[0]
             
             joints_3d_pred, joints_2d_pred, heatmaps_pred, confidences_pred = model(images_batch, proj_mats_batch)
 
-            if iter_idx % batches_per_scene == 0:
-                scene_name = 'anim_%03d' % (5 * iter_idx // batches_per_scene)
-                print(scene_name)
-                scene_names.append(scene_name)
+            [subj_idx, anim_idx, frame] = info_batch[0] 
+            if frame == 0:
+                subj_name = 'S%d' % subj_idx
+                anim_name = 'anim_%03d' % anim_idx
+                print(subj_name, anim_name)
+                if subj_name not in subj_names:
+                    subj_names.append(subj_name)
+                if anim_name not in anim_names:
+                    anim_names.append(anim_name)
+                
                 joints_3d_pred_np = np.empty([0,] + list(joints_3d_pred.detach().cpu().numpy().shape[1::]))
                 joints_2d_pred_np = np.empty([0,] + list(joints_2d_pred.detach().cpu().numpy().shape[1::]))
                 heatmaps_pred_np = np.empty([0,] + list(heatmaps_pred.detach().cpu().numpy().shape[1::]))
                 confidences_pred_np = np.empty([0,] + list(confidences_pred.detach().cpu().numpy().shape[1::]))
 
-                preds_folder = os.path.join(save_folder, 'preds', scene_name)
+                preds_folder = os.path.join(save_folder, 'preds', 'S%d' % subj_idx, 'anim_%03d' % anim_idx)
                 os.makedirs(preds_folder, exist_ok=True)
 
             joints_3d_pred_np = np.concatenate((joints_3d_pred_np, joints_3d_pred.detach().cpu().numpy()), axis=0)
             joints_2d_pred_np = np.concatenate((joints_2d_pred_np, joints_2d_pred.detach().cpu().numpy()), axis=0)
             heatmaps_pred_np = np.concatenate((heatmaps_pred_np, heatmaps_pred.detach().cpu().numpy()), axis=0)
             confidences_pred_np = np.concatenate((confidences_pred_np, confidences_pred.detach().cpu().numpy()), axis=0)
-            
-            if iter_idx % batches_per_scene == batches_per_scene - 1:
+
+            if (frame + batch_size) == frames_per_scene:
                 # save intermediate results
                 print('saving intermediate results...')
                 np.save(os.path.join(preds_folder, 'joints_3d.npy'), joints_3d_pred_np) # numpy array of size (num_frames, num_joints, 3)
@@ -85,28 +96,32 @@ def multiview_test(model, dataloader, device, save_folder, show_img=False, make_
                 np.save(os.path.join(preds_folder, 'confidences.npy'), confidences_pred_np) # numpy array of size (num_frames, num_views, num_joints)
 
     # save evaluations and visualizations
-    for scene_name in scene_names:
-        scene_folder = os.path.join(dataloader.dataset.basepath, 'S0', scene_name) # subj currently hardcoded
-        # evaluate
-        joints_3d_pred_path = os.path.join(save_folder, 'preds', scene_name, 'joints_3d.npy')
-        error_per_scene = evaluate_one_scene(joints_3d_pred_path, scene_folder, invalid_joints=(9, 16))
-        metrics[scene_name] = error_per_scene
+    for subj_name in subj_names:
+        metrics_subj = {}
+        for anim_name in anim_names:
+            scene_folder = os.path.join(dataloader.dataset.basepath, subj_name, anim_name) # subj currently hardcoded
+            # evaluate
+            joints_3d_pred_path = os.path.join(save_folder, 'preds', subj_name, anim_name, 'joints_3d.npy')
+            error_per_scene = evaluate_one_scene(joints_3d_pred_path, scene_folder, invalid_joints=(9, 16))
+            metrics_subj[anim_name] = error_per_scene
 
-        # save images
-        print('saving result images...')
-        imgs_folder = os.path.join(save_folder, 'imgs', scene_name)
-        visualize.draw_one_scene(joints_3d_pred_path, scene_folder, imgs_folder, show_img=show_img)
+            # save images
+            print('saving result images...')
+            imgs_folder = os.path.join(save_folder, 'imgs', subj_name, anim_name)
+            visualize.draw_one_scene(joints_3d_pred_path, scene_folder, imgs_folder, show_img=show_img)
 
-        # save gifs/videos (optioanl)
-        if make_gif:
-            print('saving result gifs...')
-            gif_name = os.path.join(save_folder, 'gifs', '%s.gif' % scene_name)
-            visualize.make_gif(imgs_folder, gif_name)
+            # save gifs/videos (optioanl)
+            if make_gif:
+                print('saving result gifs...')
+                gif_name = os.path.join(save_folder, 'gifs', subj_name, '%s.gif' % anim_name)
+                visualize.make_gif(imgs_folder, gif_name)
 
-        if make_vid:
-            print('saving result videos...')
-            vid_name = os.path.join(save_folder, 'vids', '%s.mp4' % scene_name)
-            visualize.make_vid(imgs_folder, vid_name)
+            if make_vid:
+                print('saving result videos...')
+                vid_name = os.path.join(save_folder, 'vids', subj_name, '%s.mp4' % anim_name)
+                visualize.make_vid(imgs_folder, vid_name)
+
+        metrics[subj_name] = metrics_subj
             
     # save evaluation
     print('saving evaluation results...')
@@ -131,9 +146,9 @@ if __name__ == "__main__":
     model.load_state_dict(state_dict, strict=True)
 
     print("Loading data..")
-    data_path = 'data/test_01/multiview_data'
+    data_path = 'data/test_02/multiview_data'
     dataset = MultiView_SynData(data_path, invalid_joints=(9, 16), bbox=[80, 0, 560, 480], ori_form=1)
     dataloader = datasets_utils.syndata_loader(dataset, batch_size=4)
 
-    save_folder = os.path.join(os.getcwd(), 'results/test_01')
+    save_folder = os.path.join(os.getcwd(), 'results/test_02')
     multiview_test(model, dataloader, device, save_folder, make_vid=True)

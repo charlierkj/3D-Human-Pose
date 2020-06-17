@@ -56,7 +56,8 @@ def collate_fn(batch):
 
     images_batch, proj_mats_batch, joints_3d_gt_batch, joints_3d_valid_batch \
                   = images_batch.type(torch.float32), proj_mats_batch.type(torch.float32), joints_3d_gt_batch.type(torch.float32), joints_3d_valid_batch.type(torch.float32)
-    return images_batch, proj_mats_batch, joints_3d_gt_batch, joints_3d_valid_batch
+    info_batch = [[int(s) for s in sample['info'].split('_')] for sample in samples]
+    return images_batch, proj_mats_batch, joints_3d_gt_batch, joints_3d_valid_batch, info_batch
 
 
 def syndata_loader(dataset, batch_size=1, shuffle=False):

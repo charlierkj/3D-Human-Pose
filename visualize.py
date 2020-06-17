@@ -54,7 +54,8 @@ def to_cartesian_coords(pts_homo):
 
 def make_gif(temp_folder, write_path, remove_imgs=False):
     write_folder = os.path.split(write_path)[0]
-    os.makedirs(write_folder, exist_ok=True)
+    if write_folder != '':
+        os.makedirs(write_folder, exist_ok=True)
     with imageio.get_writer(write_path, mode='I') as writer:
         for image in sorted(glob.glob(os.path.join(temp_folder, '*.png'))):
             writer.append_data(imageio.imread(image))
@@ -62,14 +63,15 @@ def make_gif(temp_folder, write_path, remove_imgs=False):
                 os.remove(image)
     writer.close()
 
-def make_vid(temp_folder, write_path, fps=30, size=None, remove_imgs=False):
-    imgs_list_sorted = sorted(glob.glob(os.path.join(temp_folder, '*.png')))
+def make_vid(temp_folder, write_path, img_format='png', fps=30, size=None, remove_imgs=False):
+    imgs_list_sorted = sorted(glob.glob(os.path.join(temp_folder, '*.%s' % img_format)))
     if size is None:
         img_0 = cv2.imread(imgs_list_sorted[0])
         height, width, channels = img_0.shape
         size = (width, height)
     write_folder = os.path.split(write_path)[0]
-    os.makedirs(write_folder, exist_ok=True)
+    if write_folder != '':
+        os.makedirs(write_folder, exist_ok=True)
     fourcc = cv2.VideoWriter_fourcc(*'mp4v')
     vid_writer = cv2.VideoWriter(write_path, fourcc, fps, size)
     for image in imgs_list_sorted:

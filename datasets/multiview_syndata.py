@@ -190,6 +190,8 @@ class MultiView_SynData(td.Dataset):
         keypts_valid = torch.ones(self.num_jnts, 1)
         keypts_valid[self.invalid_jnts, :] = 0
         data['joints_3d_valid'] = keypts_valid # binary tensor of size n x 1
+
+        data['info'] = '%02d_%03d_%06d' % (subj_idx, anim_idx, frame)
         
         return data
             
