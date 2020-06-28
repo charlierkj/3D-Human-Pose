@@ -22,6 +22,7 @@ def render_human(bvh_file, viewpoint, img_size, save_folder):
     anim_name = os.path.splitext(bvh_filename)[0]
     skeleton_obj = bpy.data.objects['originalPose']
     skeleton_obj.animation_data.action = bpy.data.actions.get(anim_name)
+    skeleton_obj.rotation_euler = [-3.1416/2, 0, 3.1416/2] # need to modify
     bpy.data.objects[anim_name].select_set(True)
     bpy.ops.object.delete()
 
@@ -29,9 +30,11 @@ def render_human(bvh_file, viewpoint, img_size, save_folder):
 
     # place camera
     camera_obj = bpy.data.objects['Camera']
-    camera_loc, camera_rot_euler = tf_utils.spherical_to_pose(viewpoint)
-    camera_rot_quaternion = tf_utils.euler_to_quaternion(camera_rot_euler)
+    camera_loc, camera_rot_eulerXYZ = tf_utils.viewpoint_to_eulerXYZ(viewpoint)
     camera_obj.location = camera_loc
+    #camera_obj.rotation_mode = 'XYZ' # Euler XYZ
+    #camera_obj.rotation_euler = camera_rot_eulerXYZ
+    camera_rot_quaternion = tf_utils.eulerXYZ_to_quaternion(camera_rot_eulerXYZ)
     camera_obj.rotation_mode = 'QUATERNION'
     camera_obj.rotation_quaternion = camera_rot_quaternion
 
@@ -41,7 +44,7 @@ def render_human(bvh_file, viewpoint, img_size, save_folder):
     
     for frame_idx in range(2, 61): # hardcoded, need later modification
         bpy.context.scene.frame_set(frame_idx)
-        img_path = os.path.join(save_folder, '%06d.jpg' % (frame_idx - 1))
+        img_path = os.path.join(save_folder, '%06d.png' % (frame_idx - 1))
         bpy.data.scenes['Scene'].render.filepath = img_path
         bpy.ops.render.render(write_still=True)       
     
@@ -58,7 +61,7 @@ def blender_cmd(bvh_file, cam_pose, save_folder):
 
 
 if __name__ == "__main__":
-    bvh_file = './bvh/anim_100.bvh'
+    bvh_file = 'C:/Users/charl/Work/hopkins_time/Research/learnable-triangulation-pytorch/blender/bvh/anim_100.bvh'
     save_folder = 'C:/Users/charl/Work/hopkins_time/Research/learnable-triangulation-pytorch/blender/bvh/anim_100'
 
-    render_human(bvh_file, (2, 135, 30), (640, 480), save_folder)
+    render_human(bvh_file, (5, 45, 60), (640, 480), save_folder)

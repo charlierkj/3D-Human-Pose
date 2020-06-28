@@ -30,7 +30,7 @@ def compute_rotation(vec_a, vec_b):
               (1 - cos_theta) * (w_hat @ w_hat) # Rodrigue's formula
     return rot_mat
 
-def spherical_to_pose(viewpoint):
+def viewpoint_to_eulerXYZ(viewpoint):
     """assuming camera aimed to origin, compute 6DOF camera pose.
     viewpoint: 3-tuple, (distance, azimuth, elevation)
     """
@@ -40,24 +40,36 @@ def spherical_to_pose(viewpoint):
     x = dist * np.cos(theta) * np.cos(phi)
     y = dist * np.sin(theta) * np.cos(phi)
     z = dist * np.sin(phi)
-    roll = - el
-    pitch = 0
-    yaw = - az + PI
-    return [x, y, z], [roll, pitch, yaw]
+    rx = PI / 2 - phi
+    ry = 0
+    rz = theta + PI / 2
+    return [x, y, z], [rx, ry, rz]
 
-def euler_to_quaternion(euler):
-    roll, pitch, yaw = euler
-    c1 = np.cos(yaw / 2.0)
-    c2 = np.cos(pitch / 2.0)
-    c3 = np.cos(roll / 2.0)    
-    s1 = np.sin(yaw / 2.0)
-    s2 = np.sin(pitch / 2.0)
-    s3 = np.sin(roll / 2.0)    
-    qw = c1 * c2 * c3 + s1 * s2 * s3
-    qx = c1 * c2 * s3 - s1 * s2 * c3
-    qy = c1 * s2 * c3 + s1 * c2 * s3
-    qz = s1 * c2 * c3 - c1 * s2 * s3
-    return [qw, qx, qy, qz]
+def eulerXYZ_to_quaternion(eulerXYZ):
+    rx, ry, rz = eulerXYZ
+    q1 = angle_axis_to_quaternion(rx, [1, 0, 0])
+    q2 = angle_axis_to_quaternion(ry, [0, 1, 0])
+    q3 = angle_axis_to_quaternion(rz, [0, 0, 1])
+    q = quaternion_product(quaternion_product(q3, q2), q1)
+    return q
+
+def angle_axis_to_quaternion(theta, w):
+    """
+    theta: scalar (angle in radians)
+    w: 3-dim vector (axis)
+    """
+    w = w / np.linalg.norm(w)
+    qw = np.cos(theta / 2)
+    qv = np.sin(theta / 2) * np.array(w)
+    return [qw, qv[0], qv[1], qv[2]]
+
+def quaternion_product(q, p):
+    qw, qv = q[0], np.array(q[1:])
+    pw, pv = p[0], np.array(p[1:])
+    prodw = qw * pw - np.dot(qv, pv)
+    prodv = qw * pv + pw * qv + np.cross(qv, pv)
+    return [prodw, prodv[0], prodv[1], prodv[2]]
+    
 
 
     
