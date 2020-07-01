@@ -10,7 +10,7 @@ sys.path.append(blend_dir)
 import tf_utils
 
 
-def render_human(bvh_file, viewpoint, img_size, save_folder):
+def render_human(bvh_file, viewpoint, target, img_size, save_folder):
     """cam_pose: 3-tuple: (distance, azimuth, elevation)."""
     if save_folder != '':
         os.makedirs(save_folder, exist_ok=True)
@@ -30,7 +30,7 @@ def render_human(bvh_file, viewpoint, img_size, save_folder):
 
     # place camera
     camera_obj = bpy.data.objects['Camera']
-    camera_loc, camera_rot_eulerXYZ = tf_utils.viewpoint_to_eulerXYZ(viewpoint)
+    camera_loc, camera_rot_eulerXYZ = tf_utils.viewpoint_to_eulerXYZ(viewpoint, target)
     camera_obj.location = camera_loc
     #camera_obj.rotation_mode = 'XYZ' # Euler XYZ
     #camera_obj.rotation_euler = camera_rot_eulerXYZ
@@ -41,6 +41,7 @@ def render_human(bvh_file, viewpoint, img_size, save_folder):
     # render
     # set resolution
     (bpy.context.scene.render.resolution_x, bpy.context.scene.render.resolution_y) = img_size
+    bpy.context.scene.render.resolution_percentage = 100
     
     for frame_idx in range(2, 61): # hardcoded, need later modification
         bpy.context.scene.frame_set(frame_idx)
@@ -64,4 +65,4 @@ if __name__ == "__main__":
     bvh_file = 'C:/Users/charl/Work/hopkins_time/Research/learnable-triangulation-pytorch/blender/bvh/anim_100.bvh'
     save_folder = 'C:/Users/charl/Work/hopkins_time/Research/learnable-triangulation-pytorch/blender/bvh/anim_100'
 
-    render_human(bvh_file, (5, 45, 60), (640, 480), save_folder)
+    render_human(bvh_file, (3, 45, 30), (0, 0, 1.3), (1280, 960), save_folder)

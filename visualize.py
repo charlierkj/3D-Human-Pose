@@ -46,7 +46,7 @@ def to_homogeneous_coords(pts_cart):
     if isinstance(pts_cart, np.ndarray):
         return np.vstack((pts_cart, np.ones((1, pts_cart.shape[1]))))
     elif torch.is_tensor(pts_cart):
-        return torch.cat((pts_cart, torch.ones((1, pts_cart.shape[1])).to(pts_cart.device)), dim=0)
+        return torch.cat((pts_cart, torch.ones((1, pts_cart.shape[1])).type(pts_cart.dtype).to(pts_cart.device)), dim=0)
 
 def to_cartesian_coords(pts_homo):
     """conversion from homogeneous to cartesian coodinates."""

@@ -11,10 +11,14 @@ import datasets.utils as datasets_utils
 import visualize
 
 
-def evaluate_one_scene(joints_3d_pred_path, scene_folder, invalid_joints=(9, 16)):
+def evaluate_one_scene(joints_3d_pred_path, scene_folder, invalid_joints=(9, 16), path=True):
     """joints_3d_pred_path: the path where npy file is stored.
-    scene_folder: the folder under which the input images and groundtruth jsons are stored."""
-    joints_3d_pred = np.load(joints_3d_pred_path)
+    scene_folder: the folder under which the input images and groundtruth jsons are stored.
+    path: indicate whether 'joints_3d_pred_path' is a path or not - True(is path), False(not path, is array)."""
+    if path:
+        joints_3d_pred = np.load(joints_3d_pred_path)
+    else:
+        joints_3d_pred = joints_3d_pred_path
     num_frames, num_joints = joints_3d_pred.shape[0], joints_3d_pred.shape[1]
     joints_3d_valid = np.ones(shape=(num_frames, num_joints, 1))
     joints_3d_valid[:, invalid_joints, :] = 0
@@ -146,9 +150,9 @@ if __name__ == "__main__":
     model.load_state_dict(state_dict, strict=True)
 
     print("Loading data..")
-    data_path = 'data/test_02/multiview_data'
+    data_path = 'data/test_03/multiview_data'
     dataset = MultiView_SynData(data_path, invalid_joints=(9, 16), bbox=[80, 0, 560, 480], ori_form=1)
     dataloader = datasets_utils.syndata_loader(dataset, batch_size=4)
 
-    save_folder = os.path.join(os.getcwd(), 'results/test_02')
+    save_folder = os.path.join(os.getcwd(), 'results/test_03')
     multiview_test(model, dataloader, device, save_folder, make_vid=True)

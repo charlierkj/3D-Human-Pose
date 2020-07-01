@@ -30,16 +30,17 @@ def compute_rotation(vec_a, vec_b):
               (1 - cos_theta) * (w_hat @ w_hat) # Rodrigue's formula
     return rot_mat
 
-def viewpoint_to_eulerXYZ(viewpoint):
+def viewpoint_to_eulerXYZ(viewpoint, target=(0, 0, 0)):
     """assuming camera aimed to origin, compute 6DOF camera pose.
     viewpoint: 3-tuple, (distance, azimuth, elevation)
+    target: 3-tuple, (x, y, z). where should camera be aiming.
     """
     dist, az, el = viewpoint
     phi = el / 180 * PI
     theta = az / 180 * PI
-    x = dist * np.cos(theta) * np.cos(phi)
-    y = dist * np.sin(theta) * np.cos(phi)
-    z = dist * np.sin(phi)
+    x = dist * np.cos(theta) * np.cos(phi) + target[0]
+    y = dist * np.sin(theta) * np.cos(phi) + target[1]
+    z = dist * np.sin(phi) + target[2]
     rx = PI / 2 - phi
     ry = 0
     rz = theta + PI / 2
