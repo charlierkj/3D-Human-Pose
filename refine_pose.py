@@ -54,7 +54,9 @@ class PoseRefiner(nn.Module):
         return loss
 
     def lift_loss(self):
-        loss = torch.sum((self.joints_3d - self.joints_3d_original)**2)
+        # loss = torch.sum((self.joints_3d - self.joints_3d_original)**2)
+        u, s, v = torch.svd(self.joints_3d - self.joints_3d_original)
+        loss = torch.sum(torch.max(s, dim=1)[0])
         return loss
 
     def proj_loss(self):
@@ -64,13 +66,17 @@ class PoseRefiner(nn.Module):
             for view_idx in range(num_views):
                 joints_2d_transpose = visualize.proj_to_2D(\
                     self.proj_mats[view_idx, :, :], self.joints_3d[frame_idx, :, :].T) # 2 x num_jnts
-                loss += torch.sum((joints_2d_transpose - self.joints_2d_original[frame_idx, view_idx, :, :].T)**2)
+                # loss += torch.sum((joints_2d_transpose - self.joints_2d_original[frame_idx, view_idx, :, :].T)**2)
+                u, s, v = torch.svd(joints_2d_transpose.T - self.joints_2d_original[frame_idx, view_idx, :, :])
+                loss += torch.max(s)
         return loss
 
     def smooth_loss(self):
         joints_3d_last = self.joints_3d[:-1, :, :]
         joints_3d_next = self.joints_3d[1:, :, :]
-        loss = torch.sum((joints_3d_next - joints_3d_last)**2)
+        # loss = torch.sum((joints_3d_next - joints_3d_last)**2)
+        u, s, v = torch.svd(joints_3d_next - joints_3d_last)
+        loss = torch.sum(torch.max(s, dim=1)[0])
         return loss
 
     def bone_loss(self):
@@ -111,6 +117,7 @@ def refine_one_scene(joints_3d_pred_path, joints_2d_pred_path, scene_folder, sav
     # optimize
     optimizer = torch.optim.Adam([model.joints_3d], lr=lr)
     for i in range(iterations):
+        model.train()
         optimizer.zero_grad()
         loss = model()
         loss.backward()
@@ -153,5 +160,5 @@ if __name__ == "__main__":
     save_folder = 'results/refined_test_01_S0_anim_010'
 
     refine_one_scene(joints_3d_pred_path, joints_2d_pred_path, scene_folder, save_folder, \
-                     weights=[0.1, 0.0001, 0.01, 100], iterations=1000, lr=0.1)
+                     weights=[0.1, 0.0001, 10, 1], iterations=1000, lr=0.1)
         
