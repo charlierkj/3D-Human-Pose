@@ -74,8 +74,12 @@ class PoseRefiner(nn.Module):
     def smooth_loss(self):
         joints_3d_last = self.joints_3d[:-1, :, :]
         joints_3d_next = self.joints_3d[1:, :, :]
+        vel = joints_3d_next - joints_3d_last
+        vel_last = vel[:-1, :, :]
+        vel_next = vel[1:, :, :]
+        accel = vel_next - vel_last
         # loss = torch.sum((joints_3d_next - joints_3d_last)**2)
-        u, s, v = torch.svd(joints_3d_next - joints_3d_last)
+        u, s, v = torch.svd(accel)
         loss = torch.sum(torch.max(s, dim=1)[0])
         return loss
 
@@ -83,6 +87,7 @@ class PoseRefiner(nn.Module):
         bone_length = torch.sqrt(torch.sum((self.joints_3d[:, self.conn[:, 0], :] \
                       - self.joints_3d[:, self.conn[:, 1], :])**2, dim=2))
         # median deviation
+        print(self.bone_length_median)
         loss = torch.sum((bone_length - self.bone_length_median)**2)
         return loss
 
@@ -122,7 +127,7 @@ def refine_one_scene(joints_3d_pred_path, joints_2d_pred_path, scene_folder, sav
         loss = model()
         loss.backward()
         optimizer.step()
-        if i % 50 == 0:
+        if i % 10 == 0:
             with torch.no_grad():
                 model.eval()
                 joints_3d_np = model.joints_3d.cpu().numpy()
@@ -160,5 +165,5 @@ if __name__ == "__main__":
     save_folder = 'results/refined_test_01_S0_anim_010'
 
     refine_one_scene(joints_3d_pred_path, joints_2d_pred_path, scene_folder, save_folder, \
-                     weights=[0.1, 0.0001, 10, 1], iterations=1000, lr=0.1)
+                     weights=[0, 0, 0, 1], iterations=100, lr=1)
         

@@ -150,9 +150,9 @@ if __name__ == "__main__":
     model.load_state_dict(state_dict, strict=True)
 
     print("Loading data..")
-    data_path = 'data/test_03/multiview_data'
+    data_path = 'data/test_03_temp/multiview_data'
     dataset = MultiView_SynData(data_path, invalid_joints=(9, 16), bbox=[80, 0, 560, 480], ori_form=1)
     dataloader = datasets_utils.syndata_loader(dataset, batch_size=4)
 
-    save_folder = os.path.join(os.getcwd(), 'results/test_03')
+    save_folder = os.path.join(os.getcwd(), 'results/test_03_temp')
     multiview_test(model, dataloader, device, save_folder, make_vid=True)

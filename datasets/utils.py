@@ -1,7 +1,13 @@
-import json
+import os, json
 import numpy as np
 import torch
+import torchvision as tv
 import torch.utils.data as td
+from PIL import Image
+
+from camera_utils import *
+from visualize import IMAGENET_MEAN, IMAGENET_STD
+
 
 Joints_SynData = [
     "foot_r",
@@ -38,6 +44,36 @@ def load_joints(joints_name, skeleton_path):
                            y_keypts.reshape(num_jnts,1),\
                            z_keypts.reshape(num_jnts,1)))
     return keypoints
+
+
+def load_image(image_path, bbox=None):
+    # return tensor
+    assert os.path.isfile(image_path)
+    image = Image.open(image_path) # RGB
+    if bbox is not None:
+        image = image.crop(bbox)
+    transform = tv.transforms.Compose([
+        tv.transforms.ToTensor(),
+        tv.transforms.Normalize(IMAGENET_MEAN, IMAGENET_STD)
+        ])
+    image_tensor = transform(image)
+    return image_tensor
+
+
+def load_camera(camera_file):
+    with open(camera_file) as camera_json:
+        camera_dict = json.load(camera_json)
+
+    pos = camera_dict['location']
+    rot = camera_dict['rotation']
+    width = camera_dict['width']
+    height = camera_dict['height']
+    fov = camera_dict['fov']
+
+    cam = Camera(pos[0], pos[1], pos[2],
+                 rot[2], rot[0], rot[1],
+                 width, height, width/2)
+    return cam
 
     
 def collate_fn(batch):

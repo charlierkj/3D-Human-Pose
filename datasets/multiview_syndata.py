@@ -12,9 +12,6 @@ from PIL import Image
 from camera_utils import *
 import datasets.utils as datasets_utils
 
-IMAGENET_MEAN = (0.485, 0.456, 0.406)
-IMAGENET_STD = (0.229, 0.224, 0.225)
-
 
 class MultiView_SynData(td.Dataset):
 
@@ -35,10 +32,10 @@ class MultiView_SynData(td.Dataset):
         self.invalid_jnts = () if invalid_joints is None else invalid_joints
 
         # torchvision transforms
-        self.transform = tv.transforms.Compose([
-            tv.transforms.ToTensor(),
-            tv.transforms.Normalize(IMAGENET_MEAN, IMAGENET_STD)
-            ])
+        # self.transform = tv.transforms.Compose([
+        #     tv.transforms.ToTensor(),
+        #     tv.transforms.Normalize(IMAGENET_MEAN, IMAGENET_STD)
+        #     ])
 
         # joint names
         self.joints_name = datasets_utils.Joints_SynData
@@ -61,18 +58,7 @@ class MultiView_SynData(td.Dataset):
                         if ('camera' in f_fn) and (f_fn.split('_')[1] in self.camera_names):
                             # load cameras
                             camera_idx = self.camera_names.index(f_fn.split('_')[1])
-                            with open(f_path) as json_file:
-                                camera_dict = json.load(json_file)
-
-                            pos = camera_dict['location']
-                            rot = camera_dict['rotation']
-                            width = camera_dict['width']
-                            height = camera_dict['height']
-                            fov = camera_dict['fov']
-
-                            cam = Camera(pos[0], pos[1], pos[2],
-                                         rot[2], rot[0], rot[1],
-                                         width, height, width/2)
+                            cam = datasets_utils.load_camera(f_path)
                             cams[camera_idx] = cam
 
                     else:
@@ -102,18 +88,7 @@ class MultiView_SynData(td.Dataset):
                             if ('camera' in f_fn) and (f_fn.split('_')[1] in self.camera_names):
                                 # load cameras
                                 camera_idx = self.camera_names.index(f_fn.split('_')[1])
-                                with open(f_path) as json_file:
-                                    camera_dict = json.load(json_file)
-
-                                pos = camera_dict['location']
-                                rot = camera_dict['rotation']
-                                width = camera_dict['width']
-                                height = camera_dict['height']
-                                fov = camera_dict['fov']
-
-                                cam = Camera(pos[0], pos[1], pos[2],
-                                             rot[2], rot[0], rot[1],
-                                             width, height, width/2)
+                                cam = datasets_utils.load_camera(f_path)
                                 cams[camera_idx] = cam
                             elif 'skeleton' in f_fn:
                                 # record frame list
@@ -144,15 +119,12 @@ class MultiView_SynData(td.Dataset):
             # load data
             for camera_idx, camera_name in enumerate(self.camera_names):
                 image_path = os.path.join(frame_path, 'view_%s.png' % camera_name)
-                assert os.path.isfile(image_path)
-                image = Image.open(image_path) # RGB
+                image_tensor = datasets_utils.load_image(image_path, bbox)
                 cam = self.cameras[subj_idx][camera_idx]
             
                 if bbox is not None:
-                    image = image.crop(bbox)
                     cam.update_after_crop(bbox)
 
-                image_tensor = self.transform(image)
                 images.append(image_tensor)
                 cameras.append(cam)
 
@@ -166,15 +138,12 @@ class MultiView_SynData(td.Dataset):
             # load data
             for camera_idx, camera_name in enumerate(self.camera_names):
                 image_path = os.path.join(anim_path, camera_name, '%06d.jpg' % frame)
-                assert os.path.isfile(image_path)
-                image = Image.open(image_path) # RGB
+                image_tensor = datasets_utils.load_image(image_path, bbox)
                 cam = self.cameras[subj_idx][anim_idx][camera_idx]
             
                 if bbox is not None:
-                    image = image.crop(bbox)
                     cam.update_after_crop(bbox)
 
-                image_tensor = self.transform(image)
                 images.append(image_tensor)
                 cameras.append(cam)
 

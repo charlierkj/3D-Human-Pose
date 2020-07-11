@@ -132,7 +132,6 @@ def draw_one_scene(joints_3d_pred_path, scene_folder, save_folder, cams_idx=list
 
     bbox = [80, 0, 560, 480] # hardcoded bbox
     for frame_idx in range(num_frames):
-        ####### duplicate with dataset class, need to simplify later #######
         images = []
         proj_mats = []
         for camera_idx in cams_idx:
@@ -140,31 +139,18 @@ def draw_one_scene(joints_3d_pred_path, scene_folder, save_folder, cams_idx=list
             
             # load image
             image_path = os.path.join(scene_folder, camera_name, '%06d.jpg' % frame_idx)
-            assert os.path.isfile(image_path)
-            image = Image.open(image_path) # RGB
-            image = image.crop(bbox)
-            transform = tv.transforms.Compose([
-                tv.transforms.ToTensor(),
-                tv.transforms.Normalize(IMAGENET_MEAN, IMAGENET_STD)
-                ])
-            image_tensor = transform(image)
+            image_tensor = datasets_utils.load_image(image_path, bbox)
             images.append(image_tensor)
 
             # load camera
             camera_file = os.path.join(scene_folder, 'camera_%s.json' % camera_name)
-            with open(camera_file) as camera_json:
-                camera = json.load(camera_json)
-
-            cam = Camera(camera['location'][0], camera['location'][1], camera['location'][2],
-                         camera['rotation'][2], camera['rotation'][0], camera['rotation'][1],
-                         camera['width'], camera['height'], camera['width'] / 2)
+            cam = datasets_utils.load_camera(camera_file)
             cam.update_after_crop(bbox)
             proj_mat = cam.get_P() # 3 x 4
             proj_mats.append(proj_mat)
 
         images = torch.stack(images, dim=0)
         proj_mats = np.stack(proj_mats, axis=0)
-        ####### duplicate with dataset class, need to simplify later #######
 
         # load groundtruth
         joints_name = datasets_utils.Joints_SynData

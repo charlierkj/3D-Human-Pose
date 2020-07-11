@@ -39,6 +39,9 @@ def render_human(bvh_file, viewpoint, target, img_size, save_folder):
     camera_obj.rotation_quaternion = camera_rot_quaternion
 
     # render
+    # set light
+    light = bpy.data.lights[0]
+    light.energy = 500
     # set resolution
     (bpy.context.scene.render.resolution_x, bpy.context.scene.render.resolution_y) = img_size
     bpy.context.scene.render.resolution_percentage = 100
