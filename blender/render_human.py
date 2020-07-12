@@ -1,4 +1,4 @@
-import os, sys, subprocess
+import os, sys
 import numpy as np
 import bpy
 
@@ -50,22 +50,16 @@ def render_human(bvh_file, viewpoint, target, img_size, save_folder):
         bpy.context.scene.frame_set(frame_idx)
         img_path = os.path.join(save_folder, '%06d.png' % (frame_idx - 1))
         bpy.data.scenes['Scene'].render.filepath = img_path
-        bpy.ops.render.render(write_still=True)       
-    
-    
-def blender_cmd(bvh_file, cam_pose, save_folder):
-
-    blender_path = 'C:/Users/charl/Work/Blender Foundation/Blender 2.83/blender.exe' # absolute path for blender.exe
-    blend_file = 'prototype_0522.blend' # .blend file
-    py_file = 'npy2bvh.py'
-
-    render_cmd = f'"{blender_path}" "{blend_file}" --python "{py_file}"'
-    print('Run blender command: %s' % render_cmd)
-    subprocess.run(render_cmd)
+        bpy.ops.render.render(write_still=True) 
 
 
 if __name__ == "__main__":
-    bvh_file = 'C:/Users/charl/Work/hopkins_time/Research/learnable-triangulation-pytorch/blender/bvh/anim_100.bvh'
-    save_folder = 'C:/Users/charl/Work/hopkins_time/Research/learnable-triangulation-pytorch/blender/bvh/anim_100'
+
+    if '--' not in sys.argv:
+        bvh_file = 'C:/Users/charl/Work/hopkins_time/Research/learnable-triangulation-pytorch/blender/bvh/anim_100.bvh'
+        save_folder = 'C:/Users/charl/Work/hopkins_time/Research/learnable-triangulation-pytorch/blender/bvh/anim_100'
+    else:
+        bvh_file = sys.argv[-2]
+        save_folder = sys.argv[-1]
 
     render_human(bvh_file, (3, 45, 30), (0, 0, 1.3), (1280, 960), save_folder)

@@ -141,9 +141,13 @@ class NPY2BVH_Converter(object):
                   
 
 if __name__ == "__main__":
-    print(os.getcwd())
-    npy_path = 'C:/Users/charl/Work/hopkins_time/Research/learnable-triangulation-pytorch/results/test_01/preds/anim_100/joints_3d.npy'
-    bvh_file = 'C:/Users/charl/Work/hopkins_time/Research/learnable-triangulation-pytorch/blender/bvh/anim_100.bvh'
+
+    if '--' not in sys.argv:
+        npy_path = 'C:/Users/charl/Work/hopkins_time/Research/learnable-triangulation-pytorch/results/test_01/preds/anim_100/joints_3d.npy'
+        bvh_file = 'C:/Users/charl/Work/hopkins_time/Research/learnable-triangulation-pytorch/blender/bvh/anim_100.bvh'
+    else:
+        npy_path = sys.argv[-2]
+        bvh_file = sys.argv[-1]
     
     converter = NPY2BVH_Converter()
     converter.convert(npy_path, bvh_file)
