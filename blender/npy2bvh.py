@@ -51,7 +51,7 @@ Bones = [
 
 class NPY2BVH_Converter(object):
 
-    def __init__(self):
+    def __init__(self, centralize=False):
         self.joints_name = Joints_Pred
         self.bones = Bones
         
@@ -75,11 +75,18 @@ class NPY2BVH_Converter(object):
         self.facing_init = np.array([1, 0, 1])
         self.facebone = self.set_facebone() # dict
         self.nose_idx = self.joints_name.index('Nose') # nose will be used as reference
+
+        self.centralize = centralize # whether initialliy place the skeleton at origin (X-Y plane) 
         
     def convert(self, npy_path, write_path):
         joints_3d_np = np.load(npy_path)
-        #******************** need modify the following line ***********#
+        
+        if self.centralize:
+            joints_3d_np = self.centralize_joints(joints_3d_np)
+
+        # UE is not right-hand frame
         joints_3d_np[:, :, 1] = - joints_3d_np[:, :, 1]
+
         joints_3d_np = joints_3d_np / 100 # cm -> m
         num_frames = len(joints_3d_np)
         for frame in range(num_frames):
@@ -137,7 +144,12 @@ class NPY2BVH_Converter(object):
                 joint_loc = obj.location
                 facebone[obj.name] = np.array(joint_loc - ref_loc)
         return facebone
-            
+
+    def centralize_joints(self, joints_3d_np):
+        hip_c_idx = self.joints_name.index('Hip.Center')
+        offset = joints_3d_np[0, hip_c_idx, :] # first frame, hip center
+        offset[2] = 0 # do not change Z value
+        return joints_3d_np - offset
                   
 
 if __name__ == "__main__":
@@ -149,5 +161,5 @@ if __name__ == "__main__":
         npy_path = sys.argv[-2]
         bvh_file = sys.argv[-1]
     
-    converter = NPY2BVH_Converter()
+    converter = NPY2BVH_Converter(centralize=True)
     converter.convert(npy_path, bvh_file)

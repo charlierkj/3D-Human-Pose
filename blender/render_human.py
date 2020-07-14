@@ -10,6 +10,19 @@ sys.path.append(blend_dir)
 import tf_utils
 
 
+def get_num_frames_from_bvh(bvh_file):
+    f = open(bvh_file, 'r')
+    line = f.readline()
+    while line and line != '':
+        if line.startswith('Frames:'):
+            num_frames = int(line.split(' ')[1])
+            f.close()
+            return num_frames
+        line = f.readline()
+    print('Cannot find frame numbers in .bvh file')
+    return 0
+    
+
 def render_human(bvh_file, viewpoint, target, img_size, save_folder):
     """cam_pose: 3-tuple: (distance, azimuth, elevation)."""
     if save_folder != '':
@@ -45,8 +58,9 @@ def render_human(bvh_file, viewpoint, target, img_size, save_folder):
     # set resolution
     (bpy.context.scene.render.resolution_x, bpy.context.scene.render.resolution_y) = img_size
     bpy.context.scene.render.resolution_percentage = 100
-    
-    for frame_idx in range(2, 61): # hardcoded, need later modification
+
+    num_frames = get_num_frames_from_bvh(bvh_file)
+    for frame_idx in range(2, num_frames): # from 2nd frame, 1st frame defective
         bpy.context.scene.frame_set(frame_idx)
         img_path = os.path.join(save_folder, '%06d.png' % (frame_idx - 1))
         bpy.data.scenes['Scene'].render.filepath = img_path

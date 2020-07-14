@@ -9,6 +9,7 @@ from datasets.multiview_syndata import MultiView_SynData
 import datasets.utils as datasets_utils
 
 from test import multiview_test
+from visualize import make_vid
 from blender.run_blender import *
 
 
@@ -38,15 +39,30 @@ if __name__ == '__main__':
     # 3D human pose estimation
     print("Estimating human pose ...")
     output_folder = os.path.abspath(args.output_folder)
-    multiview_test(model, dataloader, device, output_folder, make_vid=True)
+    #multiview_test(model, dataloader, device, output_folder, make_vid=True)
 
     # convert to .bvh file
     print("Converting to .bvh file ...")
-    npy_path = os.path.join(output_folder, 'preds', 'S0', 'anim_000', 'joints_3d.npy')
-    bvh_file = os.path.join(output_folder, 'S0_anim_000.bvh')
-    blender_convert(npy_path, bvh_file)
+    preds_folder = os.path.join(output_folder, 'preds')
+    for subj in os.listdir(preds_folder):
+        subj_folder = os.path.join(preds_folder, subj)
+        for anim in os.listdir(subj_folder):
+            anim_folder = os.path.join(subj_folder, anim)
+            npy_path = os.path.join(anim_folder, 'joints_3d.npy')
+            bvh_file = os.path.join(output_folder, 'bvh', subj, '%s.bvh' % anim)
+            blender_convert(npy_path, bvh_file)
 
     # render
     print("Rendering in Blender ...")
-    save_folder = os.path.join(output_folder, 'rendered')
-    blender_render(bvh_file, save_folder)
+    bvh_folder = os.path.join(output_folder, 'bvh')
+    for subj in os.listdir(bvh_folder):
+        subj_folder = os.path.join(bvh_folder, subj)
+        for f in os.listdir(subj_folder):
+            f_path = os.path.join(subj_folder, f)
+            anim = os.path.splitext(f)[0]
+            save_folder = os.path.join(output_folder, 'rendered', 'img', subj, anim)
+            blender_render(f_path, save_folder)
+
+            # make video
+            vid_path = os.path.join(output_folder, 'rendered', 'vid', subj, '%s.mp4' % anim)
+            make_vid(save_folder, vid_path, remove_imgs=True)
