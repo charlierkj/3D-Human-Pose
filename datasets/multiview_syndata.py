@@ -23,7 +23,7 @@ class MultiView_SynData(td.Dataset):
         """
         self.basepath = path
         self.form = ori_form
-        self.subj = os.listdir(self.basepath)
+        self.subj = sorted(os.listdir(self.basepath))
         self.framelist = []
         self.camera_names = []
         self.cameras = {}
@@ -49,7 +49,7 @@ class MultiView_SynData(td.Dataset):
 
             for (subj_idx, subj_name) in enumerate(self.subj):
                 subj_path = os.path.join(self.basepath, subj_name)
-                files = os.listdir(subj_path)
+                files = sorted(os.listdir(subj_path))
                 cams = {} # dict to store camera params for each subject
                 for f in files:
                     f_path = os.path.join(subj_path, f)
@@ -74,12 +74,12 @@ class MultiView_SynData(td.Dataset):
 
             for (subj_idx, subj_name) in enumerate(self.subj):
                 subj_path = os.path.join(self.basepath, subj_name)
-                anims = os.listdir(subj_path) # animation list
+                anims = sorted(os.listdir(subj_path)) # animation list
                 cams_subj = {} # dict to store camera params for each subject, where keys are anim indices
                 for anim_name in anims:
                     anim_idx = int(anim_name.split('_')[1]) # animation index
                     anim_path = os.path.join(subj_path, anim_name)
-                    files = os.listdir(anim_path)
+                    files = sorted(os.listdir(anim_path))
                     cams = {} # dict to store camera params for each subject with each animations
                     for f in files:
                         f_path = os.path.join(anim_path, f)
@@ -161,7 +161,7 @@ class MultiView_SynData(td.Dataset):
         data['joints_3d_valid'] = keypts_valid # binary tensor of size n x 1
 
         data['info'] = '%02d_%03d_%06d' % (subj_idx, anim_idx, frame)
-        
+
         return data
             
         

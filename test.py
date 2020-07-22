@@ -68,7 +68,7 @@ def multiview_test(model, dataloader, device, save_folder, show_img=False, make_
             
             joints_3d_pred, joints_2d_pred, heatmaps_pred, confidences_pred = model(images_batch, proj_mats_batch)
 
-            [subj_idx, anim_idx, frame] = info_batch[0] 
+            [subj_idx, anim_idx, frame] = info_batch[0]
             if frame == 0:
                 subj_name = 'S%d' % subj_idx
                 anim_name = 'anim_%03d' % anim_idx
@@ -110,9 +110,9 @@ def multiview_test(model, dataloader, device, save_folder, show_img=False, make_
             metrics_subj[anim_name] = error_per_scene
 
             # save images
-            print('saving result images...')
+            #print('saving result images...')
             imgs_folder = os.path.join(save_folder, 'imgs', subj_name, anim_name)
-            visualize.draw_one_scene(joints_3d_pred_path, scene_folder, imgs_folder, show_img=show_img)
+            #visualize.draw_one_scene(joints_3d_pred_path, scene_folder, imgs_folder, show_img=show_img)
 
             # save gifs/videos (optioanl)
             if make_gif:
@@ -150,9 +150,9 @@ if __name__ == "__main__":
     model.load_state_dict(state_dict, strict=True)
 
     print("Loading data..")
-    data_path = 'data/test_03_temp/multiview_data'
+    data_path = '../mocap_syndata/multiview_data'
     dataset = MultiView_SynData(data_path, invalid_joints=(9, 16), bbox=[80, 0, 560, 480], ori_form=1)
     dataloader = datasets_utils.syndata_loader(dataset, batch_size=4)
 
-    save_folder = os.path.join(os.getcwd(), 'results/test_03_temp')
-    multiview_test(model, dataloader, device, save_folder, make_vid=True)
+    save_folder = os.path.join(os.getcwd(), 'results/mocap_syndata')
+    multiview_test(model, dataloader, device, save_folder, make_vid=False)
