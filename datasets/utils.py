@@ -6,7 +6,7 @@ import torch.utils.data as td
 from PIL import Image
 
 from camera_utils import *
-from visualize import IMAGENET_MEAN, IMAGENET_STD
+import visualize
 
 
 Joints_SynData = [
@@ -54,7 +54,7 @@ def load_image(image_path, bbox=None):
         image = image.crop(bbox)
     transform = tv.transforms.Compose([
         tv.transforms.ToTensor(),
-        tv.transforms.Normalize(IMAGENET_MEAN, IMAGENET_STD)
+        tv.transforms.Normalize(visualize.IMAGENET_MEAN, visualize.IMAGENET_STD)
         ])
     image_tensor = transform(image)
     return image_tensor
