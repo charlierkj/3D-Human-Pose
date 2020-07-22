@@ -53,12 +53,17 @@ class Camera(object):
             ])
         return T
 
-    def get_P(self):
-        """get 3x4 projection matrix."""
+    def get_extM(self):
+        """get 3x4 extrinsic matrix."""
         ext_mat = np.array([
             [0, 1, 0],
             [0, 0, 1],
             [1, 0, 0]]) @ np.hstack((self.R.T, -self.R.T @ self.T)) # extrinsic matrix (rows re-aligned)
+        return ext_mat
+
+    def get_P(self):
+        """get 3x4 projection matrix."""
+        ext_mat = self.get_extM()
         P = self.K @ ext_mat
         return P
 

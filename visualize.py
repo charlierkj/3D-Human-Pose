@@ -41,6 +41,12 @@ def proj_to_2D(proj_mat, pts_3d):
     pts_2d = to_cartesian_coords(pts_2d_homo) # 2 x n
     return pts_2d
 
+def proj_to_camspace(ext_mat, pts_3d):
+    """project to 3D camera space"""
+    pts_3d_homo = to_homogeneous_coords(pts_3d) # 4 x n
+    pts_3d_camspace = ext_mat @ pts_3d_homo # 3 x n
+    return pts_3d_camspace
+
 def to_homogeneous_coords(pts_cart):
     """conversion from cartesian to homogeneous coordinates."""
     if isinstance(pts_cart, np.ndarray):
