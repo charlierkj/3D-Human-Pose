@@ -183,16 +183,29 @@ def plot_2D_error_occlusion(dataset_folder, result_folder, write_path, reject_ca
                     jnt_3d_camspace = visualize.proj_t0_camspace(ext_mats[camera_idx], joints_3d_gt.T)
                     depth_gt = jnt_3d_camspace[2, :]
                     for joint_idx in [0, 1, 2, 3, 4, 5, 6, 7, 8, 10, 11, 12, 13, 14, 15]:
-                        x, y = int(joints_2d_gt[joint_idx, 0]), int(joints_2d_gt[joint_idx, 1]) 
-
-            error_scene += np.sqrt(np.sum((joints_2d_valid * (joints_2d_pred - joints_2d_gt))**2, axis=3))
+                        x, y = int(joints_2d_gt[joint_idx, 0]+80), int(joints_2d_gt[joint_idx, 1]) # hardcoded
+                        dz = depth_npy[y, x]
+                        diff = abs(depth_gt[joint_idx] - dz)
+                        if x > 0 and x < 640 and y > 0 and y < 480: # hardcoded
+                            error = np.linalg.norm(joint_2d_pred[frame_idx, camera_idx, joint_idx, :] - joints_2d_gt[joint_idx, :])
+                            if diff < 20:
+                                error_noocclusion[joint_idx, 0] += 1
+                                error_noocclusion[joint_idx, 1] += error
+                            else:
+                                error_occlusion[joint_idx, 0] += 1
+                                error_occlusion[joint_idx, 1] += error
             
-    errors = np.sum(error_scene, axis=(0, 1)) / (6 * 55 * 60 * 3) # hardcoded
-    print(errors)
+    error_occlusion[:, 1] /=  error_occlusion[:, 0]
+    error_noocclusion[:, 1] /=  error_noocclusion[:, 0]
+    print(error_occlusion[:, 1])
+    print(error_noocclusion[:, 1])
+    valid_joints = [0, 1, 2, 3, 4, 5, 6, 7, 8, 10, 11, 12, 13, 14, 15]
     # plot
-    plt.bar(range(17), errors, tick_label=range(17))
+    plt.bar(valid_joints, error_noocclusion[valid_joints, 1], label="no occlusion", color='blue')
+    plt.bar(valid_joints, error_occlusion[valid_joints, 1], label="occlusion", color='red')
     plt.ylabel('error (pixel)')
     plt.xlabel('joint index')
+    plt.legend()
     write_folder = os.path.split(write_path)[0]
     if write_folder != '':
         os.makedirs(write_folder, exist_ok=True)
@@ -276,3 +289,4 @@ if __name__ == "__main__":
     plot_2D_error_per_subject(dataset_folder, result_folder, write_path='figs/2D_per_subj.png')
     plot_2D_error_per_joint(dataset_folder, result_folder, write_path='figs/2D_per_joint.png')
     plot_confidences_2D_error(dataset_folder, result_folder, write_path='figs/confidences_2D_error.png')
+    plot_2D_error_occlusion(dataset_folder, result_folder, write_path='figs/occlusion.png')
