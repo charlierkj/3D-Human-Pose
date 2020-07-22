@@ -26,9 +26,12 @@ def plot_3D_error_per_subject(dataset_folder, result_folder, write_path):
         errors.append(error_subj)
     # plot
     plt.bar(range(len(subj_names)), errors, tick_label=subj_names)
+    write_folder = os.path.split(write_path)[0]
+    if write_folder != '':
+        os.makedirs(write_folder, exist_ok=True)
     plt.savefig(write_path)
 
-def plot_2D_error_per_subject(dataset_folder, result_folder, write_path, reject_camera=[])
+def plot_2D_error_per_subject(dataset_folder, result_folder, write_path, reject_camera=[]):
     preds_folder = os.path.join(result_folder, 'preds')
     subj_names = os.listdir(preds_folder)
     errors = []
@@ -39,15 +42,16 @@ def plot_2D_error_per_subject(dataset_folder, result_folder, write_path, reject_
         num_anims = len(anim_names)
         for anim_name in anim_names:
             anim_folder = os.path.join(subj_folder, anim_name)
-            joints_2d_pred_path = os.path.join(anim_folder, 'joints_3d.npy')
+            joints_2d_pred_path = os.path.join(anim_folder, 'joints_2d.npy')
             joints_2d_pred = np.load(joints_2d_pred_path)
             scene_folder = os.path.join(dataset_folder, subj_name, anim_name)
-
+            
             num_frames, num_views, num_joints, _ = joints_2d_pred.shape
             invalid_camera = (0,)
             invalid_joints = (9, 16) # hardcoded
             joints_2d_valid = np.ones(shape=(num_frames, num_views, num_joints, 2))
-            joints_2d_valid[:, invalid_camera, invalid_joints, :] = 0
+            joints_2d_valid[:, invalid_camera, :, :] = 0
+            joints_2d_valid[:, :, invalid_joints, :] = 0
             joints_2d_gt = np.empty(shape=(num_frames, num_views, num_joints, 2))
 
             proj_mats = []
@@ -68,13 +72,16 @@ def plot_2D_error_per_subject(dataset_folder, result_folder, write_path, reject_
                     joints_2d_gt[frame_idx, camera_idx, :, :] = jnt_2d.T
 
             error_scene = joints_2d_valid * (joints_2d_pred - joints_2d_gt)
-            error_scene = np.mean(np.sqrt(np.sum(error_scene**2, axis=3)))
+            error_scene = np.sum(np.sqrt(np.sum(error_scene**2, axis=3))) / (num_frames * 3 * 15) # hardcoded
             error_subj += error_scene
             
         error_subj /= num_anims
         errors.append(error_subj)
     # plot
     plt.bar(range(len(subj_names)), errors, tick_label=subj_names)
+    write_folder = os.path.split(write_path)[0]
+    if write_folder != '':
+        os.makedirs(write_folder, exist_ok=True)
     plt.savefig(write_path)
 
 if __name__ == "__main__":
