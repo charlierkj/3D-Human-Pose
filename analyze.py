@@ -180,7 +180,7 @@ def plot_2D_error_occlusion(dataset_folder, result_folder, write_path, reject_ca
                     depth_npy = np.load(depth_npy_path)
                     jnt_2d = visualize.proj_to_2D(proj_mats[camera_idx], joints_3d_gt.T) # need rename
                     joints_2d_gt = jnt_2d.T
-                    jnt_3d_camspace = visualize.proj_t0_camspace(ext_mats[camera_idx], joints_3d_gt.T)
+                    jnt_3d_camspace = visualize.proj_to_camspace(ext_mats[camera_idx], joints_3d_gt.T)
                     depth_gt = jnt_3d_camspace[2, :]
                     for joint_idx in [0, 1, 2, 3, 4, 5, 6, 7, 8, 10, 11, 12, 13, 14, 15]:
                         x, y = int(joints_2d_gt[joint_idx, 0]+80), int(joints_2d_gt[joint_idx, 1]) # hardcoded
