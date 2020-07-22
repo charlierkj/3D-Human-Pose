@@ -44,7 +44,6 @@ def plot_2D_error_per_subject(dataset_folder, result_folder, write_path, reject_
             anim_folder = os.path.join(subj_folder, anim_name)
             joints_2d_pred_path = os.path.join(anim_folder, 'joints_2d.npy')
             joints_2d_pred = np.load(joints_2d_pred_path)
-            joints_2d_pred[:, :, :, 1] = 480 - joints_2d_pred[:, :, :, 1] # hardcoded
             scene_folder = os.path.join(dataset_folder, subj_name, anim_name)
             
             num_frames, num_views, num_joints, _ = joints_2d_pred.shape
@@ -101,7 +100,6 @@ def plot_2D_error_per_joint(dataset_folder, result_folder, write_path, reject_ca
             anim_folder = os.path.join(subj_folder, anim_name)
             joints_2d_pred_path = os.path.join(anim_folder, 'joints_2d.npy')
             joints_2d_pred = np.load(joints_2d_pred_path)
-            joints_2d_pred[:, :, :, 1] = 480 - joints_2d_pred[:, :, :, 1] # hardcoded
             scene_folder = os.path.join(dataset_folder, subj_name, anim_name)
             
             num_frames, num_views, num_joints, _ = joints_2d_pred.shape
@@ -157,7 +155,6 @@ def plot_2D_error_occlusion(dataset_folder, result_folder, write_path, reject_ca
             anim_folder = os.path.join(subj_folder, anim_name)
             joints_2d_pred_path = os.path.join(anim_folder, 'joints_2d.npy')
             joints_2d_pred = np.load(joints_2d_pred_path)
-            joints_2d_pred[:, :, :, 1] = 480 - joints_2d_pred[:, :, :, 1] # hardcoded
             scene_folder = os.path.join(dataset_folder, subj_name, anim_name)
             
             num_frames, num_views, num_joints, _ = joints_2d_pred.shape
@@ -216,7 +213,6 @@ def plot_confidences_2D_error(dataset_folder, result_folder, write_path, reject_
             anim_folder = os.path.join(subj_folder, anim_name)
             joints_2d_pred_path = os.path.join(anim_folder, 'joints_2d.npy')
             joints_2d_pred = np.load(joints_2d_pred_path)
-            joints_2d_pred[:, :, :, 1] = 480 - joints_2d_pred[:, :, :, 1] # hardcoded
             confidences_scene_path = os.path.join(anim_folder, 'confidences.npy')
             confidences_scene = np.load(confidences_scene_path)
             scene_folder = os.path.join(dataset_folder, subj_name, anim_name)
