@@ -184,10 +184,10 @@ def plot_2D_error_occlusion(dataset_folder, result_folder, write_path, reject_ca
                     depth_gt = jnt_3d_camspace[2, :]
                     for joint_idx in [0, 1, 2, 3, 4, 5, 6, 7, 8, 10, 11, 12, 13, 14, 15]:
                         x, y = int(joints_2d_gt[joint_idx, 0]+80), int(joints_2d_gt[joint_idx, 1]) # hardcoded
-                        dz = depth_npy[y, x]
-                        diff = abs(depth_gt[joint_idx] - dz)
                         if x > 0 and x < 640 and y > 0 and y < 480: # hardcoded
-                            error = np.linalg.norm(joint_2d_pred[frame_idx, camera_idx, joint_idx, :] - joints_2d_gt[joint_idx, :])
+                            dz = depth_npy[y, x]
+                            diff = abs(depth_gt[joint_idx] - dz)
+                            error = np.linalg.norm(joints_2d_pred[frame_idx, camera_idx, joint_idx, :] - joints_2d_gt[joint_idx, :])
                             if diff < 20:
                                 error_noocclusion[joint_idx, 0] += 1
                                 error_noocclusion[joint_idx, 1] += error
@@ -201,8 +201,9 @@ def plot_2D_error_occlusion(dataset_folder, result_folder, write_path, reject_ca
     print(error_noocclusion[:, 1])
     valid_joints = [0, 1, 2, 3, 4, 5, 6, 7, 8, 10, 11, 12, 13, 14, 15]
     # plot
-    plt.bar(valid_joints, error_noocclusion[valid_joints, 1], label="no occlusion", color='blue')
-    plt.bar(valid_joints, error_occlusion[valid_joints, 1], label="occlusion", color='red')
+    width = 4
+    plt.bar(np.array(valid_joints)-width, error_noocclusion[valid_joints, 1], width=width, label="no occlusion", color='blue')
+    plt.bar(np.array(valid_joints)+width, error_occlusion[valid_joints, 1], width=width, label="occlusion", color='red')
     plt.ylabel('error (pixel)')
     plt.xlabel('joint index')
     plt.legend()
@@ -286,7 +287,7 @@ if __name__ == "__main__":
     dataset_folder = '../mocap_syndata/multiview_data'
     result_folder = 'results/mocap_syndata'
 
-    plot_2D_error_per_subject(dataset_folder, result_folder, write_path='figs/2D_per_subj.png')
-    plot_2D_error_per_joint(dataset_folder, result_folder, write_path='figs/2D_per_joint.png')
-    plot_confidences_2D_error(dataset_folder, result_folder, write_path='figs/confidences_2D_error.png')
+    #plot_2D_error_per_subject(dataset_folder, result_folder, write_path='figs/2D_per_subj.png')
+    #plot_2D_error_per_joint(dataset_folder, result_folder, write_path='figs/2D_per_joint.png')
+    #plot_confidences_2D_error(dataset_folder, result_folder, write_path='figs/confidences_2D_error.png')
     plot_2D_error_occlusion(dataset_folder, result_folder, write_path='figs/occlusion.png')
