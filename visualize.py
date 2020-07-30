@@ -94,12 +94,12 @@ def draw_pose_2D(jnts_2d, ax, point_size=2, line_width=1):
     for conn in CONNECTIVITY_HUMAN36M:
         ax.plot(jnts_2d[conn, 0], jnts_2d[conn, 1], c='lime', linewidth=line_width)
 
-def visualize_pred(images, proj_mats, joints_3d_gt, joints_3d_pred, size=5):
+def visualize_pred(images, proj_mats, joints_3d_gt, joints_3d_pred, joints_2d_pred, size=5):
     """visualize pose prediction for single data sample."""
     num_views = images.shape[0]
     num_jnts = joints_3d_gt.shape[0]
-    fig, axes = plt.subplots(nrows=2, ncols=num_views, figsize=(num_views * size, 2 * size))
-    axes = axes.reshape(2, num_views)
+    fig, axes = plt.subplots(nrows=3, ncols=num_views, figsize=(num_views * size, 3 * size))
+    axes = axes.reshape(3, num_views)
 
     # plot images
     if torch.is_tensor(images):
@@ -111,7 +111,8 @@ def visualize_pred(images, proj_mats, joints_3d_gt, joints_3d_pred, size=5):
     for view_idx in range(num_views):
         axes[0, view_idx].imshow(images[view_idx, ::])
         axes[1, view_idx].imshow(images[view_idx, ::])
-        axes[1, view_idx].set_xlabel('view_%d' % (view_idx + 1), size='large')
+        axes[2, view_idx].imshow(images[view_idx, ::])
+        axes[2, view_idx].set_xlabel('view_%d' % (view_idx + 1), size='large')
 
     # plot groundtruth poses
     axes[0, 0].set_ylabel('groundtruth', size='large')
@@ -119,11 +120,16 @@ def visualize_pred(images, proj_mats, joints_3d_gt, joints_3d_pred, size=5):
         joints_2d_gt = proj_to_2D(proj_mats[view_idx, ::], joints_3d_gt.T)
         draw_pose_2D(joints_2d_gt.T, axes[0, view_idx])
 
-    # plot predicted poses
-    axes[1, 0].set_ylabel('prediction', size='large')
+    # plot projection of predicted 3D poses
+    axes[1, 0].set_ylabel('3D prediction', size='large')
     for view_idx in range(num_views):
-        joints_2d_pred = proj_to_2D(proj_mats[view_idx, ::], joints_3d_pred.T)
-        draw_pose_2D(joints_2d_pred.T, axes[1, view_idx])
+        joints_3d_pred_proj = proj_to_2D(proj_mats[view_idx, ::], joints_3d_pred.T)
+        draw_pose_2D(joints_3d_pred_proj.T, axes[1, view_idx])
+
+    # plot predicted 2D poses
+    axes[2, 0].set_ylabel('2D prediction', size='large')
+    for view_idx in range(num_views):
+        draw_pose_2D(joints_2d_pred[view_idx, :, :], axes[2, view_idx])
 
     fig.tight_layout()
     fig.canvas.draw()

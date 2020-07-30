@@ -60,7 +60,7 @@ def calibrate_stereo(img_folder, img_idx, write_folder, \
 
     cam1 = {}
     cam1["int"] = mtx1.tolist()
-    cam1["ext"] = np.eye(4).tolist()
+    cam1["ext"] = np.eye(4)[0:3, :].tolist()
     cam1["dist"] = dist1.tolist()
     with open(os.path.join(write_folder, "cam1.json"), 'w') as json_file:
         json.dump(cam1, json_file)
