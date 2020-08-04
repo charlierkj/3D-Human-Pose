@@ -15,7 +15,7 @@ import datasets.utils as datasets_utils
 
 class MultiView_SynData(td.Dataset):
 
-    def __init__(self, path, num_camera=4, invalid_joints=None, bbox=None, ori_form=1):
+    def __init__(self, path, num_camera=4, load_joints=17, invalid_joints=None, bbox=None, ori_form=1):
         """
         invalid_joints: tuple of indices for invalid joints; associated joints will not be used in evaluation.
         bbox: [upper_left_x, upper_left_y, lower_right-x, lower_right_y].
@@ -38,7 +38,7 @@ class MultiView_SynData(td.Dataset):
         #     ])
 
         # joint names
-        self.joints_name = datasets_utils.Joints_SynData
+        self.joints_name = datasets_utils.Joints_SynData[0:load_joints]
         self.num_jnts = len(self.joints_name)
 
         # original form: 0

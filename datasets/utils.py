@@ -26,8 +26,14 @@ Joints_SynData = [
     "upperarm_l",
     "lowerarm_l",
     "hand_l",
+    "head",
+    "head",
+    "head",
+    "head",
+    "head",
+    "head",
     "head"
-    ]
+    ] # need modify
 
 
 def load_joints(joints_name, skeleton_path):
@@ -46,12 +52,14 @@ def load_joints(joints_name, skeleton_path):
     return keypoints
 
 
-def load_image(image_path, bbox=None):
+def load_image(image_path, bbox=None, size=None):
     # return tensor
     assert os.path.isfile(image_path)
     image = Image.open(image_path) # RGB
     if bbox is not None:
         image = image.crop(bbox)
+    if size is not None:
+        image = image.resize(size)
     transform = tv.transforms.Compose([
         tv.transforms.ToTensor(),
         tv.transforms.Normalize(visualize.IMAGENET_MEAN, visualize.IMAGENET_STD)

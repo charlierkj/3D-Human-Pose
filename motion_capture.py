@@ -3,8 +3,8 @@ import argparse
 import numpy as np
 import torch
 
-from mvn.utils import cfg
-from mvn.models_temp.triangulation import AlgebraicTriangulationNet
+from utils import cfg
+from models.triangulation import AlgebraicTriangulationNet
 from datasets.multiview_syndata import MultiView_SynData
 import datasets.utils as datasets_utils
 

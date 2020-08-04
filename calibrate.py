@@ -68,9 +68,13 @@ def calibrate_stereo(img_folder, img_idx, write_folder, \
 
 if __name__ == "__main__":
     
-    img_folder = os.path.join("data", "real", "checkerboard")
-    img_idx = [71, 90, 109, 129, 150, 168, 205, 260, 306, 360, 388, 455, 547]
-    write_folder = os.path.join("data", "real", "single_human")
+    #img_folder = os.path.join("data", "real", "single_human", "checkerboard")
+    #img_idx = [71, 90, 109, 129, 150, 168, 205, 260, 306, 360, 388, 455, 547]
+    #write_folder = os.path.join("data", "real", "single_human")
+
+    img_folder = os.path.join("data", "real", "single_human_2", "checkerboard")
+    img_idx = [0]
+    write_folder = os.path.join("data", "real", "single_human_2")
 
     calibrate_stereo(img_folder, img_idx, write_folder, \
-                     chessboard_size=(9, 6), square_size=0.02)
+                     chessboard_size=(9, 6), square_size=0.0225)

@@ -3,12 +3,14 @@ import numpy as np
 import torch
 from PIL import Image
 
-from mvn.utils import cfg
-from mvn.models_temp.triangulation import AlgebraicTriangulationNet
+from utils import cfg
+from models.triangulation import AlgebraicTriangulationNet
 from datasets.multiview_syndata import MultiView_SynData
 import datasets.utils as datasets_utils
 
 import visualize
+
+from train import load_pretrained_model
 
 
 def evaluate_one_scene(joints_3d_pred_path, scene_folder, invalid_joints=(9, 16), path=True):
@@ -142,17 +144,12 @@ if __name__ == "__main__":
 
     model = AlgebraicTriangulationNet(config, device=device).to(device)
 
-    state_dict = torch.load(config.model.checkpoint)
-    for key in list(state_dict.keys()):
-        new_key = key.replace("module.", "")
-        state_dict[new_key] = state_dict.pop(key)
-
-    model.load_state_dict(state_dict, strict=True)
-
+    model = load_pretrained_model(model, config)
+    
     print("Loading data..")
     data_path = '../mocap_syndata/multiview_data'
     dataset = MultiView_SynData(data_path, invalid_joints=(9, 16), bbox=[80, 0, 560, 480], ori_form=1)
     dataloader = datasets_utils.syndata_loader(dataset, batch_size=4)
 
-    save_folder = os.path.join(os.getcwd(), 'results/mocap_syndata')
-    multiview_test(model, dataloader, device, save_folder, make_vid=False)
+    #save_folder = os.path.join(os.getcwd(), 'results/mocap_syndata')
+    #multiview_test(model, dataloader, device, save_folder, make_vid=False)
