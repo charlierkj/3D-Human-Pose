@@ -97,7 +97,7 @@ def multiview_train(model, dataloader, criterion, opt, epochs, device):
 
             # calculate loss
             loss = criterion(joints_3d_pred, joints_3d_gt_batch, joints_3d_valid_batch)
-            print(loss.item())
+            # print(loss.item())
             total_loss += batch_size * loss.item()
             total_samples += batch_size
 
@@ -138,7 +138,8 @@ def multiview_train(model, dataloader, criterion, opt, epochs, device):
 
 if __name__ == "__main__":
 
-    device = torch.device(0)
+    device = torch.device(1)
+    print(device)
     
     config = cfg.load_config('experiments/syn_data/multiview_data_2_alg.yaml')
 
@@ -149,7 +150,7 @@ if __name__ == "__main__":
     print("Loading data..")
     data_path = '../mocap_syndata/multiview_data'
     dataset = MultiView_SynData(data_path, load_joints=23, invalid_joints=(9, 16), bbox=[80, 0, 560, 480])
-    dataloader = datasets_utils.syndata_loader(dataset, batch_size=1, shuffle=True)
+    dataloader = datasets_utils.syndata_loader(dataset, batch_size=2, shuffle=True)
 
     # configure loss
     if config.opt.criterion == "MSESmooth":
