@@ -27,12 +27,12 @@ Joints_SynData = [
     "lowerarm_l",
     "hand_l",
     "head",
-    "head",
-    "head",
-    "head",
-    "head",
-    "head",
-    "head"
+    "ball_r",
+    "ball_l",
+    "middle_03_r",
+    "thumb_03_r",
+    "thumb_03_l",
+    "middle_03_l"
     ] # need modify
 
 

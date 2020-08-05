@@ -147,9 +147,9 @@ if __name__ == "__main__":
     model = load_pretrained_model(model, config)
 
     print("Loading data..")
-    data_path = 'data/test_03/multiview_data'
-    dataset = MultiView_SynData(data_path, load_joints=23, bbox=[80, 0, 560, 480])
-    dataloader = datasets_utils.syndata_loader(dataset, batch_size=1)
+    data_path = '../mocap_syndata/multiview_data'
+    dataset = MultiView_SynData(data_path, load_joints=23, invalid_joints=(9, 16), bbox=[80, 0, 560, 480])
+    dataloader = datasets_utils.syndata_loader(dataset, batch_size=1, shuffle=True)
 
     # configure loss
     if config.opt.criterion == "MSESmooth":
