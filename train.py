@@ -5,7 +5,7 @@ from torch import nn
 from datetime import datetime
 from PIL import Image
 
-#from tensorboard import SummaryWriter
+from tensorboardX import SummaryWriter
 
 from utils import cfg
 from models.triangulation import AlgebraicTriangulationNet
@@ -74,7 +74,7 @@ def multiview_train(model, dataloader, criterion, opt, epochs, device):
     os.makedirs(experiment_dir, exist_ok=True)
     checkpoint_dir = os.path.join(experiment_dir, "checkpoint")
     os.makedirs(checkpoint_dir, exist_ok=True)
-    #writer = SummaryWriter(os.path.join(experiment_dir, "tensorboard"))
+    writer = SummaryWriter(os.path.join(experiment_dir, "tensorboard"))
     
     model.to(device)
     model.train()
@@ -108,11 +108,12 @@ def multiview_train(model, dataloader, criterion, opt, epochs, device):
 
         # save loss per epoch to tensorboard
         total_loss /= total_samples
-        #writer.add_scalar("training loss", total_loss, e)
+        writer.add_scalar("training loss", total_loss, e)
 
         # evaluate
-        if e % 10 == 0:
+        if e % 1 == 0:
             with torch.no_grad():
+                model.eval()
                 total_error = 0
                 for iter_idx, (images_batch, proj_mats_batch, joints_3d_gt_batch, joints_3d_valid_batch, info_batch) in enumerate(dataloader):
                     if images_batch is None:
@@ -124,12 +125,14 @@ def multiview_train(model, dataloader, criterion, opt, epochs, device):
                     joints_3d_valid_batch = joints_3d_valid_batch.to(device)
                     batch_size = images_batch.shape[0]
                     joints_3d_pred, joints_2d_pred, heatmaps_pred, confidences_pred = model(images_batch, proj_mats_batch)
-                    error = KeypointsMSELoss(joints_3d_pred, joints_3d_gt_batch, joints_3d_valid_batch)
+                    metric = KeypointsMSELoss()
+                    error = metric(joints_3d_pred, joints_3d_gt_batch, joints_3d_valid_batch)
                     total_error += batch_size * error.item()
 
                 total_error /= total_samples
-                #writer.add_scalar("training error", total_error, e)
-                print('Epoch: %03d | Train Loss: %.3f | Train Accuracy: %.2f%%' % (e, total_loss, test_error))
+                writer.add_scalar("training error", total_error, e)
+                print('Epoch: %03d | Train Loss: %.3f | Train Error: %.2f' % (e, total_loss, total_error))
+                torch.save(model.state_dict(), os.path.join(checkpoint_dir, "weights.pth"))
 
     # save weights
     torch.save(model.state_dict(), os.path.join(checkpoint_dir, "weights.pth"))
@@ -138,7 +141,7 @@ def multiview_train(model, dataloader, criterion, opt, epochs, device):
 
 if __name__ == "__main__":
 
-    device = torch.device(1)
+    device = torch.device(4)
     print(device)
     
     config = cfg.load_config('experiments/syn_data/multiview_data_2_alg.yaml')
