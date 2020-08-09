@@ -137,9 +137,10 @@ def visualize_pred(images, proj_mats, joints_3d_gt, joints_3d_pred, joints_2d_pr
     plt.close('all')
     return fig_np
 
-def draw_one_scene(joints_3d_pred_path, scene_folder, save_folder, cams_idx=list(range(4)), show_img=False):
+def draw_one_scene(joints_3d_pred_path, joints_2d_pred_path, scene_folder, save_folder, cams_idx=list(range(4)), show_img=False):
     os.makedirs(save_folder, exist_ok=True)
     joints_3d_pred = np.load(joints_3d_pred_path)
+    joints_2d_pred = np.load(joints_2d_pred_path)
     num_frames, num_joints = joints_3d_pred.shape[0], joints_3d_pred.shape[1]
 
     bbox = [80, 0, 560, 480] # hardcoded bbox
@@ -170,7 +171,7 @@ def draw_one_scene(joints_3d_pred_path, scene_folder, save_folder, cams_idx=list
         joints_3d_gt = datasets_utils.load_joints(joints_name, skeleton_path)
 
         # draw
-        vis_img = visualize_pred(images, proj_mats, joints_3d_gt, joints_3d_pred[frame_idx, ::])
+        vis_img = visualize_pred(images, proj_mats, joints_3d_gt, joints_3d_pred[frame_idx, ::], joints_2d_pred[frame_idx, ::])
         im = Image.fromarray(vis_img)
         if show_img:
             im.show()
