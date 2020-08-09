@@ -23,7 +23,8 @@ model:
   name: "alg"
 
   init_weights: true
-  checkpoint: "./data/pretrained/human36m/human36m_alg_10-04-2019/checkpoints/0060/weights.pth"
+  # checkpoint: "./data/pretrained/human36m/human36m_alg_10-04-2019/checkpoints/0060/weights.pth"
+  checkpoint: "./logs/exp@06.08.2020-02.31.13/checkpoint/weights.pth"
 
   use_confidences: true
   heatmap_multiplier: 100.0

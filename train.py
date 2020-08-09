@@ -97,7 +97,7 @@ def multiview_train(model, dataloader, criterion, opt, epochs, device):
 
             # calculate loss
             loss = criterion(joints_3d_pred, joints_3d_gt_batch, joints_3d_valid_batch)
-            # print(loss.item())
+            print("epoch: %d, iter: %d, loss: %.3f" % (e, iter_idx, loss.item()))
             total_loss += batch_size * loss.item()
             total_samples += batch_size
 
@@ -132,7 +132,11 @@ def multiview_train(model, dataloader, criterion, opt, epochs, device):
                 total_error /= total_samples
                 writer.add_scalar("training error", total_error, e)
                 print('Epoch: %03d | Train Loss: %.3f | Train Error: %.2f' % (e, total_loss, total_error))
-                torch.save(model.state_dict(), os.path.join(checkpoint_dir, "weights.pth"))
+
+                # save weights
+                checkpoint_dir_e = os.path.join(checkpoint_dir, "%04d" % e)
+                os.makedirs(checkpoint_dir_e, exist_ok=True)
+                torch.save(model.state_dict(), os.path.join(checkpoint_dir_e, "weights.pth"))
 
     # save weights
     torch.save(model.state_dict(), os.path.join(checkpoint_dir, "weights.pth"))
@@ -162,6 +166,6 @@ if __name__ == "__main__":
         criterion = KeypointsMSELoss()
 
     # configure optimizer
-    opt = torch.optim.Adam(filter(lambda p : p.requires_grad, model.parameters()), lr=0.00001)
+    opt = torch.optim.Adam(filter(lambda p : p.requires_grad, model.parameters()), lr=0.0001)
 
-    multiview_train(model, dataloader, criterion, opt, 10, device)
+    multiview_train(model, dataloader, criterion, opt, 2, device)
