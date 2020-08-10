@@ -79,7 +79,7 @@ def load_groundtruths(dataset_folder, bbox=[80, 0, 560, 480], invalid_joints=(9,
                 ext_mats.append(ext_mat)                
 
             for frame_idx in range(num_frames):
-                joints_name = datasets_utils.Joints_SynData
+                joints_name = datasets_utils.Joints_SynData[0:17] # hardcoded
                 skeleton_path = os.path.join(anim_folder, 'skeleton_%06d.json' % frame_idx)
                 # load 3d gt
                 joints_3d_gt = datasets_utils.load_joints(joints_name, skeleton_path)
@@ -87,7 +87,8 @@ def load_groundtruths(dataset_folder, bbox=[80, 0, 560, 480], invalid_joints=(9,
                 # load 2d gt
                 for camera_idx in range(num_views):
                     joints_2d_gt = visualize.proj_to_2D(proj_mats[camera_idx], joints_3d_gt.T)
-                    joints_2d_gt_anim[frame_idx, camera_idx, :, :] = joints_2d_gt.T
+                    joints_2d_gt = joints_2d_gt.T
+                    joints_2d_gt_anim[frame_idx, camera_idx, :, :] = joints_2d_gt
                     
                     # load occlusion gt when required
                     if with_occlusion:
@@ -396,20 +397,25 @@ def plot_2D_error_per_joint_vs_az(joints_2d_pred_all, joints_2d_gt_all, params_a
 
 if __name__ == "__main__":
 
-    #dataset_folder = '../mocap_syndata/multiview_data'
-    #result_folder = 'results/mocap_syndata'
-    dataset_folder = 'data/test_03/multiview_data'
-    result_folder = 'results/test_03'
+    dataset_folder = '../mocap_syndata/multiview_data'
+    result_folder = 'results/mocap_syndata'
+    #dataset_folder = 'data/test_03/multiview_data'
+    #result_folder = 'results/test_03'
 
     joints_3d_pred_all, joints_2d_pred_all, confidences_all = load_preds(result_folder)
-    joints_3d_gt_all, joints_2d_gt_all = load_groundtruths(dataset_folder)
-    occlusion_gt_all = np.random.choice(a=[True, False], size=confidences_all.shape)
+    print("Predictions loading done.")
+    joints_3d_gt_all, joints_2d_gt_all, occlusion_gt_all = load_groundtruths(dataset_folder, with_occlusion=True)
+    print("Groundtruths loading done.")
+    params_all = load_params(dataset_folder)
+    print("Parameters loading done.")
 
-    num_subj, num_anim, num_frames, num_views, _ = confidences_all.shape
-    params_all = np.concatenate((np.random.uniform(low=170, high=250, size=(num_subj, num_anim, num_frames, num_views, 1)),
-                                 np.random.uniform(low=0, high=360, size=(num_subj, num_anim, num_frames, num_views, 1)),
-                                 np.random.uniform(low=-15, high=15, size=(num_subj, num_anim, num_frames, num_views, 1))),
-                                axis=4)
+    # occlusion_gt_all = np.random.choice(a=[True, False], size=confidences_all.shape)
+
+    # num_subj, num_anim, num_frames, num_views, _ = confidences_all.shape
+    # params_all = np.concatenate((np.random.uniform(low=170, high=250, size=(num_subj, num_anim, num_frames, num_views, 1)),
+    #                             np.random.uniform(low=0, high=360, size=(num_subj, num_anim, num_frames, num_views, 1)),
+    #                             np.random.uniform(low=-15, high=15, size=(num_subj, num_anim, num_frames, num_views, 1))),
+    #                            axis=4)
 
     print(joints_3d_pred_all.shape)
     print(joints_3d_gt_all.shape)

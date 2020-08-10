@@ -72,7 +72,7 @@ def multiview_test(model, dataloader, device, save_folder, show_img=False, make_
 
             [subj_idx, anim_idx, frame] = info_batch[0]
             if frame == 0:
-                subj_name = 'S%d' % subj_idx
+                subj_name = 'S%d_map0' % subj_idx
                 anim_name = 'anim_%03d' % anim_idx
                 print(subj_name, anim_name)
                 if subj_name not in subj_names:
@@ -85,7 +85,7 @@ def multiview_test(model, dataloader, device, save_folder, show_img=False, make_
                 heatmaps_pred_np = np.empty([0,] + list(heatmaps_pred.detach().cpu().numpy().shape[1::]))
                 confidences_pred_np = np.empty([0,] + list(confidences_pred.detach().cpu().numpy().shape[1::]))
 
-                preds_folder = os.path.join(save_folder, 'preds', 'S%d' % subj_idx, 'anim_%03d' % anim_idx)
+                preds_folder = os.path.join(save_folder, 'preds', subj_name, anim_name)
                 os.makedirs(preds_folder, exist_ok=True)
 
             joints_3d_pred_np = np.concatenate((joints_3d_pred_np, joints_3d_pred.detach().cpu().numpy()), axis=0)
@@ -147,9 +147,9 @@ if __name__ == "__main__":
     model = load_pretrained_model(model, config)
     
     print("Loading data..")
-    data_path = '../mocap_syndata/multiview_data'
+    data_path = '../mocap_syndata/multiview_data_2'
     dataset = MultiView_SynData(data_path, invalid_joints=(9, 16), bbox=[80, 0, 560, 480], ori_form=1)
     dataloader = datasets_utils.syndata_loader(dataset, batch_size=4)
 
-    #save_folder = os.path.join(os.getcwd(), 'results/mocap_syndata')
-    #multiview_test(model, dataloader, device, save_folder, make_vid=False)
+    save_folder = os.path.join(os.getcwd(), 'results/mocap_syndata_2')
+    multiview_test(model, dataloader, device, save_folder, make_vid=False)
