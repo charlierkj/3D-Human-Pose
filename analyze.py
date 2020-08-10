@@ -101,7 +101,7 @@ def load_groundtruths(dataset_folder, bbox=[80, 0, 560, 480], invalid_joints=(9,
                             if x > 0 and x < 640 and y > 0 and y < 480: # hardcoded
                                 dz = depth_map[y, x]
                                 diff = abs(joints_depth_gt[joint_idx] - dz)
-                                if diff < occlusion_thresh:
+                                if diff > occlusion_thresh:
                                     occlusion_gt_anim[frame_idx, camera_idx, joint_idx] = True
                                     
             joints_3d_gt_subj.append(joints_3d_gt_anim)
