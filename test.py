@@ -58,6 +58,10 @@ def multiview_test(model, dataloader, device, save_folder, show_img=False, make_
     metrics = {}
     with torch.no_grad():
         for iter_idx, (images_batch, proj_mats_batch, joints_3d_gt_batch, joints_3d_valid_batch, info_batch) in enumerate(dataloader):
+            # print(iter_idx)
+            # if iter_idx >= 0:
+            #     break
+
             if images_batch is None:
                 continue
 
@@ -108,13 +112,14 @@ def multiview_test(model, dataloader, device, save_folder, show_img=False, make_
             scene_folder = os.path.join(dataloader.dataset.basepath, subj_name, anim_name) # subj currently hardcoded
             # evaluate
             joints_3d_pred_path = os.path.join(save_folder, 'preds', subj_name, anim_name, 'joints_3d.npy')
+            joints_2d_pred_path = os.path.join(save_folder, 'preds', subj_name, anim_name, 'joints_2d.npy')
             error_per_scene = evaluate_one_scene(joints_3d_pred_path, scene_folder, invalid_joints=(9, 16))
             metrics_subj[anim_name] = error_per_scene
 
             # save images
-            #print('saving result images...')
+            print('saving result images...')
             imgs_folder = os.path.join(save_folder, 'imgs', subj_name, anim_name)
-            #visualize.draw_one_scene(joints_3d_pred_path, scene_folder, imgs_folder, show_img=show_img)
+            visualize.draw_one_scene(joints_3d_pred_path, joints_2d_pred_path, scene_folder, imgs_folder, show_img=show_img)
 
             # save gifs/videos (optioanl)
             if make_gif:
@@ -138,18 +143,18 @@ def multiview_test(model, dataloader, device, save_folder, show_img=False, make_
     
 if __name__ == "__main__":
 
-    device = torch.device(0)
+    device = torch.device(4)
     
-    config = cfg.load_config('experiments/syn_data/multiview_data_2_alg.yaml')
+    config = cfg.load_config('experiments/syn_data/multiview_data_alg_test_23jnts.yaml')
 
     model = AlgebraicTriangulationNet(config, device=device).to(device)
 
     model = load_pretrained_model(model, config)
     
     print("Loading data..")
-    data_path = '../mocap_syndata/multiview_data_2'
-    dataset = MultiView_SynData(data_path, invalid_joints=(9, 16), bbox=[80, 0, 560, 480], ori_form=1)
+    data_path = '../mocap_syndata/multiview_data'
+    dataset = MultiView_SynData(data_path, load_joints=config.model.backbone.num_joints, invalid_joints=(9, 16), bbox=[80, 0, 560, 480], ori_form=1)
     dataloader = datasets_utils.syndata_loader(dataset, batch_size=4)
 
-    save_folder = os.path.join(os.getcwd(), 'results/mocap_syndata_2')
+    save_folder = os.path.join(os.getcwd(), 'results/mocap_syndata_23jnts')
     multiview_test(model, dataloader, device, save_folder, make_vid=False)

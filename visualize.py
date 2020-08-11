@@ -166,7 +166,7 @@ def draw_one_scene(joints_3d_pred_path, joints_2d_pred_path, scene_folder, save_
         proj_mats = np.stack(proj_mats, axis=0)
 
         # load groundtruth
-        joints_name = datasets_utils.Joints_SynData
+        joints_name = datasets_utils.Joints_SynData[0:num_joints]
         skeleton_path = os.path.join(scene_folder, 'skeleton_%06d.json' % frame_idx)
         joints_3d_gt = datasets_utils.load_joints(joints_name, skeleton_path)
 

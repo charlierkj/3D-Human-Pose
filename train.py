@@ -95,8 +95,13 @@ def multiview_train(model, dataloader, criterion, opt, epochs, device):
 
             joints_3d_pred, joints_2d_pred, heatmaps_pred, confidences_pred = model(images_batch, proj_mats_batch)
 
+            # use predictions of invalid joints as groundtruth
+            joints_clone = ~(torch.squeeze(joints_3d_valid_batch, 2).type(torch.bool))
+            joints_3d_gt_batch[joints_clone] = joints_3d_pred[joints_clone].detach().clone()
+            joints_all_valid = torch.ones_like(joints_3d_valid_batch)
+
             # calculate loss
-            loss = criterion(joints_3d_pred, joints_3d_gt_batch, joints_3d_valid_batch)
+            loss = criterion(joints_3d_pred, joints_3d_gt_batch, joints_all_valid)
             print("epoch: %d, iter: %d, loss: %.3f" % (e, iter_idx, loss.item()))
             total_loss += batch_size * loss.item()
             total_samples += batch_size
@@ -148,7 +153,7 @@ if __name__ == "__main__":
     device = torch.device(4)
     print(device)
     
-    config = cfg.load_config('experiments/syn_data/multiview_data_2_alg.yaml')
+    config = cfg.load_config('experiments/syn_data/multiview_data_alg_train_23jnts.yaml')
 
     model = AlgebraicTriangulationNet(config, device=device).to(device)
 
