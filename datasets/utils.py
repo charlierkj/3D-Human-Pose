@@ -10,29 +10,29 @@ import visualize
 
 
 Joints_SynData = [
-    "foot_r",
-    "calf_r",
-    "thigh_r",
-    "thigh_l",
-    "calf_l",
-    "foot_l",
-    "pelvis",
-    "spine_02",
-    "neck_01",
-    "head",
-    "hand_r",
-    "lowerarm_r",
-    "upperarm_r",
-    "upperarm_l",
-    "lowerarm_l",
-    "hand_l",
-    "head",
-    "ball_r",
-    "ball_l",
-    "middle_03_r",
-    "thumb_03_r",
-    "thumb_03_l",
-    "middle_03_l"
+    "foot_r", #0
+    "calf_r", #1
+    "thigh_r", #2
+    "thigh_l", #3
+    "calf_l", #4
+    "foot_l", #5
+    "pelvis", #6
+    "spine_02", #7
+    "neck_01", #8
+    "head", #9
+    "hand_r", #10
+    "lowerarm_r", #11
+    "upperarm_r", #12
+    "upperarm_l", #13
+    "lowerarm_l", #14
+    "hand_l", #15
+    "head", #16
+    "ball_r", #17
+    "ball_l", #18
+    "middle_03_r", #19
+    "thumb_03_r", #20
+    "thumb_03_l", #21
+    "middle_03_l" #22
     ] # need modify
 
 

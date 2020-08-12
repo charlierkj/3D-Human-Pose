@@ -58,9 +58,9 @@ def multiview_test(model, dataloader, device, save_folder, show_img=False, make_
     metrics = {}
     with torch.no_grad():
         for iter_idx, (images_batch, proj_mats_batch, joints_3d_gt_batch, joints_3d_valid_batch, info_batch) in enumerate(dataloader):
-            # print(iter_idx)
-            # if iter_idx >= 0:
-            #     break
+            print(iter_idx)
+            if iter_idx >= 60:
+                break
 
             if images_batch is None:
                 continue
@@ -157,4 +157,4 @@ if __name__ == "__main__":
     dataloader = datasets_utils.syndata_loader(dataset, batch_size=4)
 
     save_folder = os.path.join(os.getcwd(), 'results/mocap_syndata_23jnts')
-    multiview_test(model, dataloader, device, save_folder, make_vid=False)
+    multiview_test(model, dataloader, device, save_folder, make_vid=True)

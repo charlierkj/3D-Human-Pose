@@ -15,7 +15,7 @@ from camera_utils import *
 IMAGENET_MEAN = np.array([0.485, 0.456, 0.406])
 IMAGENET_STD = np.array([0.229, 0.224, 0.225])
 
-CONNECTIVITY_HUMAN36M = [
+CONNECTIVITY_23JNTS = [
     (0, 1),
     (1, 2),
     (2, 6),
@@ -31,9 +31,18 @@ CONNECTIVITY_HUMAN36M = [
     (10, 11),
     (8, 13),
     (13, 14),
-    (14, 15)
+    (14, 15),
+    (0, 17),
+    (5, 18),
+    (10, 19),
+    (10, 20),
+    (19, 20),
+    (15, 21),
+    (15, 22),
+    (21, 22)
     ]
-    
+
+CONNECTIVITY_HUMAN36M = CONNECTIVITY_23JNTS[0:16]
 
 def proj_to_2D(proj_mat, pts_3d):
     pts_3d_homo = to_homogeneous_coords(pts_3d) # 4 x n
@@ -93,6 +102,9 @@ def draw_pose_2D(jnts_2d, ax, point_size=2, line_width=1):
     ax.scatter(jnts_2d[:, 0], jnts_2d[:, 1], c='red', s=point_size) # plot joints
     for conn in CONNECTIVITY_HUMAN36M:
         ax.plot(jnts_2d[conn, 0], jnts_2d[conn, 1], c='lime', linewidth=line_width)
+    if jnts_2d.shape[0] == 23:
+        for conn in CONNECTIVITY_23JNTS[16:]:
+            ax.plot(jnts_2d[conn, 0], jnts_2d[conn, 1], c='cyan', linewidth=line_width)
 
 def visualize_pred(images, proj_mats, joints_3d_gt, joints_3d_pred, joints_2d_pred, size=5):
     """visualize pose prediction for single data sample."""
