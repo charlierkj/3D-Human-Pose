@@ -8,7 +8,9 @@ from PIL import Image
 from camera_utils import *
 import visualize
 
+from utils.img import image_batch_to_torch
 
+# Synthetic Dataset
 Joints_SynData = [
     "foot_r", #0
     "calf_r", #1
@@ -84,7 +86,7 @@ def load_camera(camera_file):
     return cam
 
     
-def collate_fn(batch):
+def syndata_collate_fn(batch):
     # mainly used to convert numpy to tensor and concatenate,
     # with making sure the data type of tensors is float.
     samples = list(d for d in batch if d is not None)
@@ -108,7 +110,69 @@ def syndata_loader(dataset, batch_size=1, shuffle=False):
     dataloader = td.DataLoader(dataset,
                                batch_size=batch_size,
                                shuffle=shuffle,
-                               collate_fn = collate_fn,
+                               collate_fn = syndata_collate_fn,
                                pin_memory=True)
     return dataloader
+
+
+
+# Human3.6M Dataset
+# Reference: https://github.com/karfly/learnable-triangulation-pytorch
+def human36m_collate_fn(items):
+        #items = list(filter(lambda x: x is not None, items))
+        items = list(x for x in items if x is not None)
+        if len(items) == 0:
+            print("All items in batch are None")
+            return None
+
+        batch = dict()
+        total_n_views = min(len(item['images']) for item in items)
+
+        indexes = np.arange(total_n_views)
     
+        batch['images'] = np.stack([np.stack([item['images'][i] for item in items], axis=0) for i in indexes], axis=0).swapaxes(0, 1)
+        batch['detections'] = np.array([[item['detections'][i] for item in items] for i in indexes]).swapaxes(0, 1)
+        batch['cameras'] = [[item['cameras'][i] for item in items] for i in indexes]
+
+        batch['keypoints_3d'] = [item['keypoints_3d'] for item in items]
+        # batch['cuboids'] = [item['cuboids'] for item in items]
+        batch['indexes'] = [item['indexes'] for item in items]
+
+        try:
+            batch['pred_keypoints_3d'] = np.array([item['pred_keypoints_3d'] for item in items])
+        except:
+            pass
+
+        return human36m_prepare_batch(batch)
+
+
+def human36m_prepare_batch(batch):
+    # images
+    images_batch = []
+    for image_batch in batch['images']:
+        image_batch = image_batch_to_torch(image_batch)
+        image_batch = image_batch.to(device)
+        images_batch.append(image_batch)
+
+    images_batch = torch.stack(images_batch, dim=0)
+
+    # 3D keypoints
+    keypoints_3d_batch_gt = torch.from_numpy(np.stack(batch['keypoints_3d'], axis=0)[:, :, :3]).float().to(device)
+
+    # 3D keypoints validity
+    keypoints_3d_validity_batch_gt = torch.from_numpy(np.stack(batch['keypoints_3d'], axis=0)[:, :, 3:]).float().to(device)
+
+    # projection matricies
+    proj_matricies_batch = torch.stack([torch.stack([torch.from_numpy(camera.projection) for camera in camera_batch], dim=0) for camera_batch in batch['cameras']], dim=0).transpose(1, 0)  # shape (batch_size, n_views, 3, 4)
+    proj_matricies_batch = proj_matricies_batch.float().to(device)
+
+    return images_batch, proj_matricies_batch, keypoints_3d_batch_gt, keypoints_3d_validity_batch_gt, None
+
+
+def human36m_loader(dataset, batch_size=1, shuffle=False):
+    dataloader = td.DataLoader(dataset,
+                               batch_size=batch_size,
+                               shuffle=shuffle,
+                               collate_fn = human36m_collate_fn,
+                               pin_memory=True)
+    return dataloader
