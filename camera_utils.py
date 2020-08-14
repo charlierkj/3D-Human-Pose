@@ -1,6 +1,6 @@
 import numpy as np
 
-class Camera(object):
+class Camera_UE(object):
     
     def __init__(self, x, y, z, roll, pitch, yaw, w, h, fov):
         self.K = self.set_K(w, h, fov)

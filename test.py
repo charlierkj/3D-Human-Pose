@@ -1,4 +1,7 @@
 import os, json
+import argparse
+import pickle
+from collections import defaultdict
 import numpy as np
 import torch
 from PIL import Image
@@ -6,6 +9,7 @@ from PIL import Image
 from utils import cfg
 from models.triangulation import AlgebraicTriangulationNet
 from datasets.multiview_syndata import MultiView_SynData
+from datasets.human36m import Human36MMultiViewDataset
 import datasets.utils as datasets_utils
 
 import visualize
@@ -46,7 +50,7 @@ def evaluate_one_batch(joints_3d_pred, joints_3d_gt_batch, joints_3d_valid_batch
     return error_batch
 
 
-def multiview_test(model, dataloader, device, save_folder, show_img=False, make_gif=False, make_vid=False):
+def syndata_test(model, dataloader, device, save_folder, show_img=False, make_gif=False, make_vid=False):
     frames_per_scene = 60
     
     model.to(device)
@@ -59,7 +63,7 @@ def multiview_test(model, dataloader, device, save_folder, show_img=False, make_
     with torch.no_grad():
         for iter_idx, (images_batch, proj_mats_batch, joints_3d_gt_batch, joints_3d_valid_batch, info_batch) in enumerate(dataloader):
             print(iter_idx)
-            if iter_idx >= 60:
+            if iter_idx >= 15:
                 break
 
             if images_batch is None:
@@ -74,9 +78,8 @@ def multiview_test(model, dataloader, device, save_folder, show_img=False, make_
             
             joints_3d_pred, joints_2d_pred, heatmaps_pred, confidences_pred = model(images_batch, proj_mats_batch)
 
-            [subj_idx, anim_idx, frame] = info_batch[0]
+            [subj_name, anim_idx, frame] = info_batch[0]
             if frame == 0:
-                subj_name = 'S%d_map0' % subj_idx
                 anim_name = 'anim_%03d' % anim_idx
                 print(subj_name, anim_name)
                 if subj_name not in subj_names:
@@ -110,6 +113,9 @@ def multiview_test(model, dataloader, device, save_folder, show_img=False, make_
         metrics_subj = {}
         for anim_name in anim_names:
             scene_folder = os.path.join(dataloader.dataset.basepath, subj_name, anim_name) # subj currently hardcoded
+            if not os.path.exists(scene_folder):
+                continue
+
             # evaluate
             joints_3d_pred_path = os.path.join(save_folder, 'preds', subj_name, anim_name, 'joints_3d.npy')
             joints_2d_pred_path = os.path.join(save_folder, 'preds', subj_name, anim_name, 'joints_2d.npy')
@@ -140,21 +146,105 @@ def multiview_test(model, dataloader, device, save_folder, show_img=False, make_
     with open(metrics_path, 'w') as metrics_json:
         json.dump(metrics, metrics_json)
 
+
+def human36m_test(model, dataloader, device, save_folder, show_img=False, make_gif=False, make_vid=False):
+    os.makedirs(save_folder, exist_ok=True)
+    saveimg_per_iter = 10
+    
+    model.to(device)
+    model.eval()
+
+    preds = defaultdict(list)
+
+    with torch.no_grad():
+        for iter_idx, (images_batch, proj_mats_batch, joints_3d_gt_batch, joints_3d_valid_batch, indexes) in enumerate(dataloader):
+            print(iter_idx)
+            if iter_idx >= 60:
+                break
+
+            if images_batch is None:
+                continue
+
+            images_batch = images_batch.to(device)
+            proj_mats_batch = proj_mats_batch.to(device)
+            joints_3d_gt_batch = joints_3d_gt_batch.to(device)
+            joints_3d_valid_batch = joints_3d_valid_batch.to(device)
+
+            batch_size = images_batch.shape[0]
+            
+            joints_3d_pred, joints_2d_pred, heatmaps_pred, confidences_pred = model(images_batch, proj_mats_batch)
+
+            preds["indexes"].append(indexes)
+            preds["joints_3d"].append(joints_3d_pred.detach().cpu().numpy())
+            preds["joints_2d"].append(joints_2d_pred.detach().cpu().numpy())
+            preds["confidences"].append(confidences_pred.detach().cpu().numpy())
+
+            # save images
+            imgs_folder = os.path.join(save_folder, "imgs")
+            os.makedirs(imgs_folder, exist_ok=True)
+            if iter_idx % saveimg_per_iter == 0:
+                img = visualize.visualize_pred(images_batch[0], proj_mats_batch[0], joints_3d_gt_batch[0], joints_3d_pred[0], joints_2d_pred[0])
+                im = Image.fromarray(img)
+                img_path = os.path.join(imgs_folder, "%06d.png" % indexes[0])
+                im.save(img_path)
+
+    preds["indexes"] = np.concatenate(preds["indexes"])
+    preds["joints_3d"] = np.concatenate(preds["joints_3d"], axis=0)
+    preds["joints_2d"] = np.concatenate(preds["joints_2d"], axis=0)
+    preds["confidences"] = np.concatenate(preds["confidences"], axis=0)
+
+    print('saving prediction results...')
+    preds_path = os.path.join(save_folder, "preds.pkl")
+    with open(preds_path, 'wb') as pkl_file:
+        pickle.dump(preds, pkl_file)
+
+
     
 if __name__ == "__main__":
 
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--data', type=str, default="syndata")
+    args = parser.parse_args()
+
+    assert args.data in ("syndata", "human36m")
+
     device = torch.device(4)
     
-    config = cfg.load_config('experiments/syn_data/multiview_data_alg_test_23jnts.yaml')
+    config = cfg.load_config('experiments/syndata/test/syndata_alg_23jnts.yaml')
 
     model = AlgebraicTriangulationNet(config, device=device).to(device)
 
     model = load_pretrained_model(model, config)
     
     print("Loading data..")
-    data_path = '../mocap_syndata/multiview_data'
-    dataset = MultiView_SynData(data_path, load_joints=config.model.backbone.num_joints, invalid_joints=(9, 16), bbox=[80, 0, 560, 480], ori_form=1)
-    dataloader = datasets_utils.syndata_loader(dataset, batch_size=4)
 
-    save_folder = os.path.join(os.getcwd(), 'results/mocap_syndata_23jnts')
-    multiview_test(model, dataloader, device, save_folder, make_vid=True)
+    if args.data == "syndata":
+        data_path = '../mocap_syndata/multiview_data'
+        dataset = MultiView_SynData(data_path, load_joints=config.model.backbone.num_joints, invalid_joints=(9, 16), bbox=[80, 0, 560, 480], ori_form=1)
+        dataloader = datasets_utils.syndata_loader(dataset, batch_size=4)
+
+        save_folder = os.path.join(os.getcwd(), 'results/mocap_syndata_23jnts')
+        syndata_test(model, dataloader, device, save_folder, make_vid=True)
+
+    elif args.data == "human36m":
+        data_path = '../learnable-triangulation-pytorch/data/human36m/processed/'
+        labels_path = '../learnable-triangulation-pytorch/data/human36m/extra/human36m-multiview-labels-GTbboxes.npy'
+        dataset = Human36MMultiViewDataset(
+                    h36m_root=data_path,
+                    test=True,
+                    image_shape=config.image_shape,
+                    labels_path=labels_path,
+                    with_damaged_actions=config.dataset.val.with_damaged_actions,
+                    retain_every_n_frames_in_test=config.dataset.val.retain_every_n_frames_in_test,
+                    scale_bbox=config.dataset.val.scale_bbox,
+                    kind="human36m",
+                    undistort_images=config.dataset.val.undistort_images,
+                    ignore_cameras=config.dataset.val.ignore_cameras if hasattr(config.dataset.val, "ignore_cameras") else [],
+                    crop=config.dataset.val.crop if hasattr(config.dataset.val, "crop") else True,
+                )
+        dataloader = datasets_utils.human36m_loader(dataset, batch_size=4)
+
+        save_folder = os.path.join(os.getcwd(), 'results/human36m_23jnts')
+        human36m_test(model, dataloader, device, save_folder, make_vid=False)
+
+

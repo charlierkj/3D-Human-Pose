@@ -96,8 +96,8 @@ def multiview_train(model, dataloader, criterion, opt, epochs, device):
             joints_3d_pred, joints_2d_pred, heatmaps_pred, confidences_pred = model(images_batch, proj_mats_batch)
 
             # use predictions of invalid joints as groundtruth
-            joints_clone = ~(torch.squeeze(joints_3d_valid_batch, 2).type(torch.bool))
-            joints_3d_gt_batch[joints_clone] = joints_3d_pred[joints_clone].detach().clone()
+            #joints_clone = ~(torch.squeeze(joints_3d_valid_batch, 2).type(torch.bool))
+            #joints_3d_gt_batch[joints_clone] = joints_3d_pred[joints_clone].detach().clone()
             joints_all_valid = torch.ones_like(joints_3d_valid_batch)
 
             # calculate loss
@@ -153,7 +153,7 @@ if __name__ == "__main__":
     device = torch.device(4)
     print(device)
     
-    config = cfg.load_config('experiments/syn_data/multiview_data_alg_train_23jnts.yaml')
+    config = cfg.load_config('experiments/syndata/train/syndata_alg_23jnts.yaml')
 
     model = AlgebraicTriangulationNet(config, device=device).to(device)
 
@@ -173,4 +173,4 @@ if __name__ == "__main__":
     # configure optimizer
     opt = torch.optim.Adam(filter(lambda p : p.requires_grad, model.parameters()), lr=0.0001)
 
-    multiview_train(model, dataloader, criterion, opt, 2, device)
+    multiview_train(model, dataloader, criterion, opt, 3, device)

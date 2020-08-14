@@ -67,6 +67,7 @@ def load_image(image_path, bbox=None, size=None):
         tv.transforms.Normalize(visualize.IMAGENET_MEAN, visualize.IMAGENET_STD)
         ])
     image_tensor = transform(image)
+    image_tensor = image_tensor[(2, 1, 0), ...] # RGB -> BGR
     return image_tensor
 
 
@@ -80,7 +81,7 @@ def load_camera(camera_file):
     height = camera_dict['height']
     fov = camera_dict['fov']
 
-    cam = Camera(pos[0], pos[1], pos[2],
+    cam = Camera_UE(pos[0], pos[1], pos[2],
                  rot[2], rot[0], rot[1],
                  width, height, width/2)
     return cam
@@ -102,7 +103,7 @@ def syndata_collate_fn(batch):
 
     images_batch, proj_mats_batch, joints_3d_gt_batch, joints_3d_valid_batch \
                   = images_batch.type(torch.float32), proj_mats_batch.type(torch.float32), joints_3d_gt_batch.type(torch.float32), joints_3d_valid_batch.type(torch.float32)
-    info_batch = [[int(s) for s in sample['info'].split('_')] for sample in samples]
+    info_batch = [[sample['info'].split('_')[i] if (i==0) else int(sample['info'].split('_')[i]) for i in range(len(sample['info'].split('_')))] for sample in samples]
     return images_batch, proj_mats_batch, joints_3d_gt_batch, joints_3d_valid_batch, info_batch
 
 
@@ -151,22 +152,22 @@ def human36m_prepare_batch(batch):
     images_batch = []
     for image_batch in batch['images']:
         image_batch = image_batch_to_torch(image_batch)
-        image_batch = image_batch.to(device)
+        image_batch = image_batch
         images_batch.append(image_batch)
 
     images_batch = torch.stack(images_batch, dim=0)
 
     # 3D keypoints
-    keypoints_3d_batch_gt = torch.from_numpy(np.stack(batch['keypoints_3d'], axis=0)[:, :, :3]).float().to(device)
+    keypoints_3d_batch_gt = torch.from_numpy(np.stack(batch['keypoints_3d'], axis=0)[:, :, :3]).float()
 
     # 3D keypoints validity
-    keypoints_3d_validity_batch_gt = torch.from_numpy(np.stack(batch['keypoints_3d'], axis=0)[:, :, 3:]).float().to(device)
+    keypoints_3d_validity_batch_gt = torch.from_numpy(np.stack(batch['keypoints_3d'], axis=0)[:, :, 3:]).float()
 
     # projection matricies
     proj_matricies_batch = torch.stack([torch.stack([torch.from_numpy(camera.projection) for camera in camera_batch], dim=0) for camera_batch in batch['cameras']], dim=0).transpose(1, 0)  # shape (batch_size, n_views, 3, 4)
-    proj_matricies_batch = proj_matricies_batch.float().to(device)
+    proj_matricies_batch = proj_matricies_batch.float()
 
-    return images_batch, proj_matricies_batch, keypoints_3d_batch_gt, keypoints_3d_validity_batch_gt, None
+    return images_batch, proj_matricies_batch, keypoints_3d_batch_gt, keypoints_3d_validity_batch_gt, batch["indexes"]
 
 
 def human36m_loader(dataset, batch_size=1, shuffle=False):

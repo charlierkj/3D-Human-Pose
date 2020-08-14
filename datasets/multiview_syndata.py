@@ -153,6 +153,10 @@ class MultiView_SynData(td.Dataset):
         data['cameras'] = cameras
 
         keypoints = datasets_utils.load_joints(self.joints_name, skeleton_path)
+        preds_path = os.path.join("results/mocap_syndata/preds", self.subj[subj_idx], "anim_%03d" % anim_idx, "joints_3d.npy")
+        #print(os.path.abspath(preds_path))
+        joints_3d_pred = np.load(preds_path)
+        keypoints[self.invalid_jnts, :] = joints_3d_pred[frame, self.invalid_jnts, :] # load preds as gt for head joints
         keypts_tensor = torch.from_numpy(keypoints)
         data['joints_3d_gt'] = keypts_tensor # joints groundtruth, tensor of size n x 3
 
@@ -160,7 +164,7 @@ class MultiView_SynData(td.Dataset):
         keypts_valid[self.invalid_jnts, :] = 0
         data['joints_3d_valid'] = keypts_valid # binary tensor of size n x 1
 
-        data['info'] = '%02d_%03d_%06d' % (subj_idx, anim_idx, frame)
+        data['info'] = '%s_%03d_%06d' % (self.subj[subj_idx], anim_idx, frame)
 
         return data
             
