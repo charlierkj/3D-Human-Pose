@@ -15,7 +15,7 @@ from camera_utils import *
 IMAGENET_MEAN = np.array([0.485, 0.456, 0.406])
 IMAGENET_STD = np.array([0.229, 0.224, 0.225])
 
-CONNECTIVITY_23JNTS = [
+CONNECTIVITY_HUMAN36M = [
     (0, 1),
     (1, 2),
     (2, 6),
@@ -31,7 +31,11 @@ CONNECTIVITY_23JNTS = [
     (10, 11),
     (8, 13),
     (13, 14),
-    (14, 15),
+    (14, 15)
+    ]
+
+CONNECTIVITY_23 = CONNECTIVITY_HUMAN36M + \
+    [
     (0, 17),
     (5, 18),
     (10, 19),
@@ -42,7 +46,73 @@ CONNECTIVITY_23JNTS = [
     (21, 22)
     ]
 
-CONNECTIVITY_HUMAN36M = CONNECTIVITY_23JNTS[0:16]
+CONNECTIVITY_Face = [
+    (17, 18),
+    (18, 19),
+    (19, 20),
+    (20, 21),
+    (21, 22),
+    (22, 17)
+    ]
+    
+CONNECTIVITY_Hand = [
+    (10, 17),
+    (17, 18),
+    (10, 19),
+    (19, 20),
+    (10, 21),
+    (21, 22),
+    (10, 23),
+    (23, 24),
+    (10, 25),
+    (25, 26),
+    (15, 27),
+    (27, 28),
+    (15, 29),
+    (29, 30),
+    (15, 31),
+    (31, 32),
+    (15, 33),
+    (33, 34),
+    (15, 35),
+    (35, 36)
+    ]
+
+CONNECTIVITY_Foot = [
+    (0, 17),
+    (17, 18),
+    (5, 20),
+    (20, 19)
+    ]
+
+CONNECTIVITY_21 = CONNECTIVITY_HUMAN36M + CONNECTIVITY_Foot
+
+CONNECTIVITY_27 = CONNECTIVITY_HUMAN36M + CONNECTIVITY_Face + \
+        [tuple([j if j < 17 else j + 6 for j in conn]) for conn in CONNECTIVITY_Foot]
+
+CONNECTIVITY_37 = CONNECTIVITY_HUMAN36M + CONNECTIVITY_Hand
+
+CONNECTIVITY_All = CONNECTIVITY_37 + CONNECTIVITY_Face + \
+        [tuple([j if j < 17 else j + 6 for j in conn]) for conn in CONNECTIVITY_Hand] + \
+        [tuple([j if j < 17 else j + 26 for j in conn]) for conn in CONNECTIVITY_Foot]
+
+def load_connectivity(num_joints):
+    connectivity = []
+    if num_joints == 17:
+        connectivity = CONNECTIVITY_HUMAN36M
+    elif num_joints == 21:
+        connectivity = CONNECTIVITY_21
+    elif num_joints == 23:
+        connectivity = CONNECTIVITY_23
+    elif num_joints == 27:
+        connectivity = CONNECTIVITY_27
+    elif num_joints == 37:
+        connectivity = CONNECTIVITY_37
+    elif num_joints == 47:
+        connectivity = CONNECTIVITY_All
+    else:
+        raise ValueError("invalid number of joints.")
+    return connectivity
 
 def proj_to_2D(proj_mat, pts_3d):
     pts_3d_homo = to_homogeneous_coords(pts_3d) # 4 x n
@@ -99,11 +169,14 @@ def draw_pose_2D(jnts_2d, ax, point_size=2, line_width=1):
     if torch.is_tensor(jnts_2d):
         jnts_2d = jnts_2d.cpu().detach() # n x 2
 
+    num_jnts = jnts_2d.shape[0]
+    connectivity = load_connectivity(num_jnts)
+
     ax.scatter(jnts_2d[:, 0], jnts_2d[:, 1], c='red', s=point_size) # plot joints
     for conn in CONNECTIVITY_HUMAN36M:
         ax.plot(jnts_2d[conn, 0], jnts_2d[conn, 1], c='lime', linewidth=line_width)
-    if jnts_2d.shape[0] == 23:
-        for conn in CONNECTIVITY_23JNTS[16:]:
+    if num_jnts > 17:
+        for conn in connectivity[16:]:
             ax.plot(jnts_2d[conn, 0], jnts_2d[conn, 1], c='cyan', linewidth=line_width)
 
 def visualize_pred(images, proj_mats, joints_3d_gt, joints_3d_pred, joints_2d_pred, size=5):
@@ -179,7 +252,7 @@ def draw_one_scene(joints_3d_pred_path, joints_2d_pred_path, scene_folder, save_
         proj_mats = np.stack(proj_mats, axis=0)
 
         # load groundtruth
-        joints_name = datasets_utils.Joints_SynData[0:num_joints]
+        joints_name = datasets_utils.get_joints_name(num_joints)
         skeleton_path = os.path.join(scene_folder, 'skeleton_%06d.json' % frame_idx)
         joints_3d_gt = datasets_utils.load_joints(joints_name, skeleton_path)
 

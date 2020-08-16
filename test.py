@@ -30,7 +30,7 @@ def evaluate_one_scene(joints_3d_pred_path, scene_folder, invalid_joints=(9, 16)
     joints_3d_valid[:, invalid_joints, :] = 0
     joints_3d_gt = np.empty(shape=(num_frames, num_joints, 3))
     for frame_idx in range(num_frames):
-        joints_name = datasets_utils.Joints_SynData
+        joints_name = datasets_utils.get_joints_name(num_joints)
         skeleton_path = os.path.join(scene_folder, 'skeleton_%06d.json' % frame_idx)
         joints_3d_gt[frame_idx, :, :] = datasets_utils.load_joints(joints_name, skeleton_path)
     error_frames = evaluate_one_batch(joints_3d_pred, joints_3d_gt, joints_3d_valid) # size of num_frames
@@ -204,13 +204,14 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
     parser.add_argument('--data', type=str, default="syndata")
+    parser.add_argument('--num_jnts', type=int, default=23)
     args = parser.parse_args()
 
     assert args.data in ("syndata", "human36m")
 
-    device = torch.device(4)
+    device = torch.device(6)
     
-    config = cfg.load_config('experiments/syndata/test/syndata_alg_23jnts.yaml')
+    config = cfg.load_config('experiments/syndata/test/syndata_alg_%djnts.yaml' % args.num_jnts)
 
     model = AlgebraicTriangulationNet(config, device=device).to(device)
 
@@ -223,7 +224,7 @@ if __name__ == "__main__":
         dataset = MultiView_SynData(data_path, load_joints=config.model.backbone.num_joints, invalid_joints=(9, 16), bbox=[80, 0, 560, 480], ori_form=1)
         dataloader = datasets_utils.syndata_loader(dataset, batch_size=4)
 
-        save_folder = os.path.join(os.getcwd(), 'results/mocap_syndata_23jnts')
+        save_folder = os.path.join(os.getcwd(), 'results/mocap_syndata_%djnts' % args.num_jnts)
         syndata_test(model, dataloader, device, save_folder, make_vid=True)
 
     elif args.data == "human36m":
@@ -244,7 +245,7 @@ if __name__ == "__main__":
                 )
         dataloader = datasets_utils.human36m_loader(dataset, batch_size=4)
 
-        save_folder = os.path.join(os.getcwd(), 'results/human36m_23jnts')
+        save_folder = os.path.join(os.getcwd(), 'results/human36m_%djnts' % args.num_jnts)
         human36m_test(model, dataloader, device, save_folder, make_vid=False)
 
 

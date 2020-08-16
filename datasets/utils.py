@@ -28,7 +28,10 @@ Joints_SynData = [
     "upperarm_l", #13
     "lowerarm_l", #14
     "hand_l", #15
-    "head", #16
+    "head" #16
+    ]
+
+Joints_23 = Joints_SynData + [
     "ball_r", #17
     "ball_l", #18
     "middle_03_r", #19
@@ -37,6 +40,66 @@ Joints_SynData = [
     "middle_03_l" #22
     ] # need modify
 
+Joints_Face = [
+    "head_end",
+    "eye_end_r",
+    "mouth_r",
+    "jaw_end",
+    "mouth_l",
+    "eye_end_l"
+    ]
+
+Joints_Hand = [
+    "thumb_01_r",
+    "thumb_end_r",
+    "index_01_r",
+    "index_end_r",
+    "middle_01_r",
+    "middle_end_r",
+    "ring_01_r",
+    "ring_end_r",
+    "pinky_01_r",
+    "pinky_end_r",
+    "pinky_01_l",
+    "pinky_end_l",
+    "ring_01_l",
+    "ring_end_l",
+    "middle_01_l",
+    "middle_end_l",
+    "index_01_l",
+    "index_end_l",
+    "thumb_01_l",
+    "thumb_end_l"
+    ]
+
+Joints_Foot = [
+    "ball_r",
+    "foot_end_r",
+    "foot_end_l",
+    "ball_l"
+    ]
+
+Joints_All = Joints_SynData + Joints_Face + Joints_Hand + Joints_Foot
+Joints_23F = Joints_SynData + Joints_Face
+Joints_37 = Joints_SynData + Joints_Hand
+Joints_21 = Joints_SynData + Joints_Foot
+Joints_27 = Joints_SynData + Joints_Face + Joints_Foot
+
+def get_joints_name(num_joints):
+    joints_name = []
+    if num_joints == 17:
+        joints_name = Joints_SynData
+    elif num_joints == 21:
+        joints_name = Joints_21
+    elif num_joints == 23:
+        joints_name = Joints_23
+    elif num_joints == 27:
+        joints_name = Joints_27
+    elif num_joints == 37:
+        joints_name = Joints_37
+    elif num_joints == 47:
+        joints_name = Joints_All
+    return joints_name
 
 def load_joints(joints_name, skeleton_path):
     # return numpy array of size num_joints x 3.

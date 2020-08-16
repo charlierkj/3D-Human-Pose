@@ -37,9 +37,11 @@ class MultiView_SynData(td.Dataset):
         #     tv.transforms.Normalize(IMAGENET_MEAN, IMAGENET_STD)
         #     ])
 
-        # joint names
-        self.joints_name = datasets_utils.Joints_SynData[0:load_joints]
+        # joint names 
+        self.joints_name = datasets_utils.get_joints_name(load_joints)
+
         self.num_jnts = len(self.joints_name)
+        assert self.num_jnts == load_joints
 
         # original form: 0
         if self.form == 0:

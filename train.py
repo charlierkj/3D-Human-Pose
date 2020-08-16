@@ -1,5 +1,6 @@
 import os
 import numpy as np
+import argparse
 import torch
 from torch import nn
 from datetime import datetime
@@ -67,9 +68,16 @@ def load_pretrained_model(model, config, init_joints=17):
     return model
 
 
-def multiview_train(model, dataloader, criterion, opt, epochs, device):
+def multiview_train(model, dataloader, criterion, opt, epochs, device, \
+        continue_train=False, exp_log="exp_27jnts@15.08.2020-05.15.16"):
     # configure dir and writer for saving weights and intermediate evaluation
-    experiment_name = "{}@{}".format("exp", datetime.now().strftime("%d.%m.%Y-%H.%M.%S"))
+    if not continue_train:
+        experiment_name = "{}_{}jnts@{}".format("exp", "%d" % dataloader.dataset.num_jnts, datetime.now().strftime("%d.%m.%Y-%H.%M.%S"))
+        start_epoch = 0
+    else:
+        experiment_name = exp_log
+        start_epoch = int(sorted(os.listdir(os.path.join("./logs", experiment_name, "checkpoint")))[-1]) + 1
+        
     experiment_dir = os.path.join("./logs", experiment_name)
     os.makedirs(experiment_dir, exist_ok=True)
     checkpoint_dir = os.path.join(experiment_dir, "checkpoint")
@@ -79,7 +87,7 @@ def multiview_train(model, dataloader, criterion, opt, epochs, device):
     model.to(device)
     model.train()
 
-    for e in range(epochs):
+    for e in range(start_epoch, epochs):
         total_loss = 0
         total_samples = 0
         for iter_idx, (images_batch, proj_mats_batch, joints_3d_gt_batch, joints_3d_valid_batch, info_batch) in enumerate(dataloader):
@@ -150,10 +158,15 @@ def multiview_train(model, dataloader, criterion, opt, epochs, device):
 
 if __name__ == "__main__":
 
-    device = torch.device(4)
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--gpu_id', type=int, default=2)
+    parser.add_argument('--num_jnts', type=int, default=23)
+    args = parser.parse_args()
+
+    device = torch.device(args.gpu_id)
     print(device)
     
-    config = cfg.load_config('experiments/syndata/train/syndata_alg_23jnts.yaml')
+    config = cfg.load_config('experiments/syndata/train/syndata_alg_%djnts.yaml' % args.num_jnts)
 
     model = AlgebraicTriangulationNet(config, device=device).to(device)
 
@@ -161,7 +174,7 @@ if __name__ == "__main__":
 
     print("Loading data..")
     data_path = '../mocap_syndata/multiview_data'
-    dataset = MultiView_SynData(data_path, load_joints=23, invalid_joints=(9, 16), bbox=[80, 0, 560, 480])
+    dataset = MultiView_SynData(data_path, load_joints=args.num_jnts, invalid_joints=(9, 16), bbox=[80, 0, 560, 480])
     dataloader = datasets_utils.syndata_loader(dataset, batch_size=2, shuffle=True)
 
     # configure loss
@@ -173,4 +186,4 @@ if __name__ == "__main__":
     # configure optimizer
     opt = torch.optim.Adam(filter(lambda p : p.requires_grad, model.parameters()), lr=0.0001)
 
-    multiview_train(model, dataloader, criterion, opt, 3, device)
+    multiview_train(model, dataloader, criterion, opt, 3, device, continue_train=True)
