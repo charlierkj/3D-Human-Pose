@@ -114,6 +114,7 @@ def load_joints(joints_name, skeleton_path):
     keypoints = np.hstack((x_keypts.reshape(num_jnts,1),\
                            y_keypts.reshape(num_jnts,1),\
                            z_keypts.reshape(num_jnts,1)))
+    keypoints *= 10 # cm -> mm
     return keypoints
 
 
@@ -139,6 +140,7 @@ def load_camera(camera_file):
         camera_dict = json.load(camera_json)
 
     pos = camera_dict['location']
+    pos = [10 * c for c in pos] # cm -> mm
     rot = camera_dict['rotation']
     width = camera_dict['width']
     height = camera_dict['height']

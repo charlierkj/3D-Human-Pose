@@ -92,7 +92,7 @@ CONNECTIVITY_27 = CONNECTIVITY_HUMAN36M + CONNECTIVITY_Face + \
 
 CONNECTIVITY_37 = CONNECTIVITY_HUMAN36M + CONNECTIVITY_Hand
 
-CONNECTIVITY_All = CONNECTIVITY_37 + CONNECTIVITY_Face + \
+CONNECTIVITY_All = CONNECTIVITY_HUMAN36M + CONNECTIVITY_Face + \
         [tuple([j if j < 17 else j + 6 for j in conn]) for conn in CONNECTIVITY_Hand] + \
         [tuple([j if j < 17 else j + 26 for j in conn]) for conn in CONNECTIVITY_Foot]
 

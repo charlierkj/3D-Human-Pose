@@ -63,7 +63,7 @@ def syndata_test(model, dataloader, device, save_folder, show_img=False, make_gi
     with torch.no_grad():
         for iter_idx, (images_batch, proj_mats_batch, joints_3d_gt_batch, joints_3d_valid_batch, info_batch) in enumerate(dataloader):
             print(iter_idx)
-            if iter_idx >= 15:
+            if iter_idx >= 30:
                 break
 
             if images_batch is None:
@@ -225,7 +225,8 @@ if __name__ == "__main__":
         dataloader = datasets_utils.syndata_loader(dataset, batch_size=4)
 
         save_folder = os.path.join(os.getcwd(), 'results/mocap_syndata_%djnts' % args.num_jnts)
-        syndata_test(model, dataloader, device, save_folder, make_vid=True)
+        #save_folder = os.path.join(os.getcwd(), 'results/mocap_syndata')
+        syndata_test(model, dataloader, device, save_folder, make_vid=False)
 
     elif args.data == "human36m":
         data_path = '../learnable-triangulation-pytorch/data/human36m/processed/'
@@ -247,5 +248,4 @@ if __name__ == "__main__":
 
         save_folder = os.path.join(os.getcwd(), 'results/human36m_%djnts' % args.num_jnts)
         human36m_test(model, dataloader, device, save_folder, make_vid=False)
-
 
