@@ -12,7 +12,7 @@ from datasets.multiview_syndata import MultiView_SynData
 from datasets.human36m import Human36MMultiViewDataset
 import datasets.utils as datasets_utils
 
-import visualize
+import utils.visualize as visualize
 
 from train import load_pretrained_model
 
@@ -38,7 +38,7 @@ def evaluate_one_scene(joints_3d_pred_path, scene_folder, invalid_joints=(9, 16)
     return error_mean    
     
 def evaluate_one_batch(joints_3d_pred, joints_3d_gt_batch, joints_3d_valid_batch):
-    """MPJPE (mean per joint position error) in cm"""
+    """MPJPE (mean per joint position error) in mm"""
     if isinstance(joints_3d_pred, np.ndarray):
         error_batch = np.sqrt(((joints_3d_pred - joints_3d_gt_batch) ** 2).sum(2))
         error_batch = joints_3d_valid_batch * np.expand_dims(error_batch, axis=2)
@@ -203,15 +203,14 @@ def human36m_test(model, dataloader, device, save_folder, show_img=False, make_g
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('--data', type=str, default="syndata")
-    parser.add_argument('--num_jnts', type=int, default=23)
+    parser.add_argument('--config', type=str, default="experiments/syndata/test/syndata_alg_17jnts.yaml")
     args = parser.parse_args()
 
-    assert args.data in ("syndata", "human36m")
+    config = cfg.load_config(args.config)
 
-    device = torch.device(6)
-    
-    config = cfg.load_config('experiments/syndata/test/syndata_alg_%djnts.yaml' % args.num_jnts)
+    assert config.dataset.type in ("syndata", "human36m")
+
+    device = torch.device(int(config.gpu_id))
 
     model = AlgebraicTriangulationNet(config, device=device).to(device)
 
@@ -220,32 +219,29 @@ if __name__ == "__main__":
     print("Loading data..")
 
     if args.data == "syndata":
-        data_path = '../mocap_syndata/multiview_data'
-        dataset = MultiView_SynData(data_path, load_joints=config.model.backbone.num_joints, invalid_joints=(9, 16), bbox=[80, 0, 560, 480], ori_form=1)
-        dataloader = datasets_utils.syndata_loader(dataset, batch_size=4)
+        dataset = MultiView_SynData(config.dataset.data_root, load_joints=config.model.backbone.num_joints, invalid_joints=(9, 16), bbox=config.dataset.bbox)
+        dataloader = datasets_utils.syndata_loader(dataset, batch_size=config.dataset.test.batch_size)
 
-        save_folder = os.path.join(os.getcwd(), 'results/mocap_syndata_%djnts' % args.num_jnts)
+        save_folder = os.path.join(os.getcwd(), 'results/mocap_syndata_%djnts' % config.model.backbone.num_joints)
         #save_folder = os.path.join(os.getcwd(), 'results/mocap_syndata')
         syndata_test(model, dataloader, device, save_folder, make_vid=False)
 
     elif args.data == "human36m":
-        data_path = '../learnable-triangulation-pytorch/data/human36m/processed/'
-        labels_path = '../learnable-triangulation-pytorch/data/human36m/extra/human36m-multiview-labels-GTbboxes.npy'
         dataset = Human36MMultiViewDataset(
-                    h36m_root=data_path,
+                    h36m_root=config.dataset.data_root,
                     test=True,
-                    image_shape=config.image_shape,
-                    labels_path=labels_path,
-                    with_damaged_actions=config.dataset.val.with_damaged_actions,
-                    retain_every_n_frames_in_test=config.dataset.val.retain_every_n_frames_in_test,
-                    scale_bbox=config.dataset.val.scale_bbox,
+                    image_shape=config.dataset.image_shape,
+                    labels_path=config.dataset.labels_path,
+                    with_damaged_actions=config.dataset.test.with_damaged_actions,
+                    retain_every_n_frames_in_test=config.dataset.test.retain_every_n_frames_in_test,
+                    scale_bbox=config.dataset.test.scale_bbox,
                     kind="human36m",
-                    undistort_images=config.dataset.val.undistort_images,
-                    ignore_cameras=config.dataset.val.ignore_cameras if hasattr(config.dataset.val, "ignore_cameras") else [],
-                    crop=config.dataset.val.crop if hasattr(config.dataset.val, "crop") else True,
+                    undistort_images=config.dataset.test.undistort_images,
+                    ignore_cameras=config.dataset.test.ignore_cameras if hasattr(config.dataset.val, "ignore_cameras") else [],
+                    crop=config.dataset.test.crop if hasattr(config.dataset.val, "crop") else True,
                 )
-        dataloader = datasets_utils.human36m_loader(dataset, batch_size=4)
+        dataloader = datasets_utils.human36m_loader(dataset, batch_size=config.dataset.test.batch_size)
 
-        save_folder = os.path.join(os.getcwd(), 'results/human36m_%djnts' % args.num_jnts)
+        save_folder = os.path.join(os.getcwd(), 'results/human36m_%djnts' % config.model.backbone.num_joints)
         human36m_test(model, dataloader, device, save_folder, make_vid=False)
 

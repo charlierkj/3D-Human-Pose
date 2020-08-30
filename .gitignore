@@ -1,0 +1,6 @@
+**/__pycache__/
+data/
+logs/
+results/
+test_vid/
+*.mp4

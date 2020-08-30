@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 
 from test import evaluate_one_scene, evaluate_one_batch
 import datasets.utils as datasets_utils
-import visualize
+import utils.visualize as visualize
 
 
 def load_preds(result_folder, invalid_joints=(9, 16)):

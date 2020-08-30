@@ -3,7 +3,7 @@ import numpy as np
 import json
 import matplotlib.pyplot as plt
 
-from camera_utils import *
+from utils.ue import *
 
 
 joints_name = [

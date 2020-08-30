@@ -9,7 +9,7 @@ from datasets.multiview_syndata import MultiView_SynData
 import datasets.utils as datasets_utils
 
 from test import multiview_test
-from visualize import make_vid
+from utils.visualize import make_vid
 from blender.run_blender import *
 
 

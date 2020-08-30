@@ -14,7 +14,7 @@ from models.loss import KeypointsMSELoss, KeypointsMSESmoothLoss
 from datasets.multiview_syndata import MultiView_SynData
 import datasets.utils as datasets_utils
 
-import visualize
+import utils.visualize as visualize
 
 
 def load_pretrained_model(model, config, init_joints=17):
@@ -159,23 +159,22 @@ def multiview_train(model, dataloader, criterion, opt, epochs, device, \
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('--gpu_id', type=int, default=2)
-    parser.add_argument('--num_jnts', type=int, default=23)
+    parser.add_argument('--config', type=str, default="experiments/syndata/test/syndata_alg_17jnts.yaml")
+    parser.add_argument('--continue_train', type=bool, default=False)
     args = parser.parse_args()
 
-    device = torch.device(args.gpu_id)
+    config = cfg.load_config(args.config)
+
+    device = torch.device(int(config.gpu_id))
     print(device)
-    
-    config = cfg.load_config('experiments/syndata/train/syndata_alg_%djnts.yaml' % args.num_jnts)
 
     model = AlgebraicTriangulationNet(config, device=device).to(device)
 
     model = load_pretrained_model(model, config)
 
     print("Loading data..")
-    data_path = '../mocap_syndata/multiview_data'
-    dataset = MultiView_SynData(data_path, load_joints=args.num_jnts, invalid_joints=(9, 16), bbox=[80, 0, 560, 480])
-    dataloader = datasets_utils.syndata_loader(dataset, batch_size=2, shuffle=True)
+    dataset = MultiView_SynData(config.dataset.data_root, load_joints=config.model.backbone.num_joints, invalid_joints=(9, 16), bbox=config.dataset.bbox)
+    dataloader = datasets_utils.syndata_loader(dataset, batch_size=config.dataset.train.batch_size, shuffle=True)
 
     # configure loss
     if config.opt.criterion == "MSESmooth":
@@ -184,6 +183,6 @@ if __name__ == "__main__":
         criterion = KeypointsMSELoss()
 
     # configure optimizer
-    opt = torch.optim.Adam(filter(lambda p : p.requires_grad, model.parameters()), lr=0.0001)
+    opt = torch.optim.Adam(filter(lambda p : p.requires_grad, model.parameters()), lr=config.opt.lr)
 
-    multiview_train(model, dataloader, criterion, opt, 3, device, continue_train=True)
+    multiview_train(model, dataloader, criterion, opt, config.opt.n_epochs, device, continue_train=args.continue_train)

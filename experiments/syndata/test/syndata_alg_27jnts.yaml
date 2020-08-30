@@ -2,20 +2,16 @@ title: "human36m_alg"
 kind: "human36m"
 vis_freq: 20
 vis_n_elements: 10
-
-image_shape: [384, 384]
+gpu_id: 6
 
 opt:
   criterion: "MSESmooth"
   mse_smooth_threshold: 400
 
   n_objects_per_epoch: 15000
-  n_epochs: 9999
+  n_epochs: 3
 
-  batch_size: 4
-  val_batch_size: 4
-
-  lr: 0.00001
+  lr: 0.0001
 
   scale_keypoints_3d: 0.1
 
@@ -41,11 +37,18 @@ model:
     num_layers: 152
 
 dataset:
+  type: "syndata"
   kind: "human36m"
 
+  data_root: "../mocap_syndata/multiview_data"
+  labels_path: "./data/multiview_data_2/extra/syn_data_labels_bboxes.npy"
+
+  image_shape: [384, 384]
+  bbox: [80, 0, 560, 480]
+
   train:
-    h36m_root: "./data/multiview_data_2/processed/"
-    labels_path: "./data/multiview_data_2/extra/syn_data_labels_bboxes.npy"
+    batch_size: 2
+      
     with_damaged_actions: true
     undistort_images: true
 
@@ -57,9 +60,9 @@ dataset:
     max_n_views: null
     num_workers: 8
 
-  val:
-    h36m_root: "./data/multiview_data_2/processed/"
-    labels_path: "./data/multiview_data_2/extra/syn_data_labels_bboxes.npy"
+  test:
+    batch_size: 4
+    
     with_damaged_actions: true
     undistort_images: true
 

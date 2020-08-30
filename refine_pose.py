@@ -4,8 +4,8 @@ import numpy as np
 import torch
 from torch import nn
 
-import visualize
-from camera_utils import Camera
+import utils.visualize as visualize
+from utils.ue import Camera_UE as Camera
 from test import evaluate_one_scene
 
 

@@ -5,8 +5,8 @@ import torchvision as tv
 import torch.utils.data as td
 from PIL import Image
 
-from camera_utils import *
-import visualize
+from utils.ue import *
+import utils.visualize as visualize
 
 from utils.img import image_batch_to_torch
 
