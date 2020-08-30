@@ -229,7 +229,8 @@ def draw_one_scene(joints_3d_pred_path, joints_2d_pred_path, scene_folder, save_
     joints_2d_pred = np.load(joints_2d_pred_path)
     num_frames, num_joints = joints_3d_pred.shape[0], joints_3d_pred.shape[1]
 
-    bbox = [80, 0, 560, 480] # hardcoded bbox
+    #bbox = [80, 0, 560, 480] # hardcoded bbox
+    bbox = [160, 0, 1120, 960]
     for frame_idx in range(num_frames):
         images = []
         proj_mats = []
