@@ -2,7 +2,7 @@ import os, json
 import numpy as np
 import matplotlib.pyplot as plt
 
-from test import evaluate_one_scene, evaluate_one_batch
+from utils.eval import evaluate_one_scene, evaluate_one_batch
 import datasets.utils as datasets_utils
 import utils.visualize as visualize
 

@@ -68,60 +68,94 @@ def load_pretrained_model(model, config, init_joints=17):
     return model
 
 
-def multiview_train(model, dataloader, criterion, opt, epochs, device, \
-        continue_train=False, exp_log="exp_27jnts@15.08.2020-05.15.16"):
+def train_one_epoch(model, train_loader, criterion, opt, e, device, \
+                    checkpoint_dir, writer=None, log_every_iters=100):
+    model.train()
+    total_samples = train_loader.dataset.__len__()
+    batch_size = train_loader.batch_size
+    iters_per_epoch = round(total_samples / batch_size)
+    total_train_loss = 0
+
+    sum_loss_per_log = 0
+    sum_samples_per_log = 0
+    
+    for iter_idx, (images_batch, proj_mats_batch, joints_3d_gt_batch, joints_3d_valid_batch, info_batch) in enumerate(train_loader):
+        if images_batch is None:
+            continue
+
+        images_batch = images_batch.to(device)
+        proj_mats_batch = proj_mats_batch.to(device)
+        joints_3d_gt_batch = joints_3d_gt_batch.to(device)
+        joints_3d_valid_batch = joints_3d_valid_batch.to(device)
+
+        batch_size = images_batch.shape[0]
+
+        joints_3d_pred, joints_2d_pred, heatmaps_pred, confidences_pred = model(images_batch, proj_mats_batch)
+
+        # use predictions of invalid joints as groundtruth
+        #joints_clone = ~(torch.squeeze(joints_3d_valid_batch, 2).type(torch.bool))
+        #joints_3d_gt_batch[joints_clone] = joints_3d_pred[joints_clone].detach().clone()
+        #joints_all_valid = torch.ones_like(joints_3d_valid_batch)
+
+        # calculate loss
+        loss = criterion(joints_3d_pred, joints_3d_gt_batch, joints_3d_valid_batch)
+        if iter_idx % log_every_iters == log_every_iters - 1:
+            logging_iter = iter_idx + 1 - log_every_iters
+            mean_loss_per_log = sum_loss_per_log / sum_samples_per_log
+            print("epoch: %d, iter: %d, train loss: %.3f" % (e, logging_iter, mean_loss_per_log))
+
+            if writer is not None:
+                writer.add_scalar("training loss (iter)", mean_loss_per_log, e * iters_per_epoch + logging_iter)
+
+            sum_loss_per_log = 0
+            sum_samples_per_log = 0
+        
+        total_train_loss += batch_size * loss.item()
+        sum_loss_per_log += batch_size * loss.item()
+        sum_samples_per_log += batch_size
+
+        # optimize
+        opt.zero_grad()
+        loss.backward()
+        opt.step()
+
+    # save training loss per epoch to tensorboard
+    mean_loss = total_train_loss / total_samples
+    if writer is not None:
+        writer.add_scalar("training loss (epoch)",  mean_loss, e)
+
+    # evaluate using training set
+    with torch.no_grad():
+        model.eval()
+        if isinstance(criterion, HeatmapMSELoss):
+            pck = 
+    return mean_loss
+    
+
+
+def multiview_train(model, train_loader, val_loader, criterion, opt, epochs, device, \
+                    log_every_iters=100, \
+                    resume=False, logdir="./logs", exp_log="exp_27jnts@15.08.2020-05.15.16"):
     # configure dir and writer for saving weights and intermediate evaluation
-    if not continue_train:
+    if not resume:
         experiment_name = "{}_{}jnts@{}".format("exp", "%d" % dataloader.dataset.num_jnts, datetime.now().strftime("%d.%m.%Y-%H.%M.%S"))
         start_epoch = 0
     else:
         experiment_name = exp_log
-        start_epoch = int(sorted(os.listdir(os.path.join("./logs", experiment_name, "checkpoint")))[-1]) + 1
+        start_epoch = int(sorted(os.listdir(os.path.join(logdir, experiment_name, "checkpoint")))[-1]) + 1
         
-    experiment_dir = os.path.join("./logs", experiment_name)
+    experiment_dir = os.path.join(logdir, experiment_name)
     os.makedirs(experiment_dir, exist_ok=True)
     checkpoint_dir = os.path.join(experiment_dir, "checkpoint")
     os.makedirs(checkpoint_dir, exist_ok=True)
     writer = SummaryWriter(os.path.join(experiment_dir, "tensorboard"))
     
     model.to(device)
-    model.train()
 
     for e in range(start_epoch, epochs):
-        total_loss = 0
-        total_samples = 0
-        for iter_idx, (images_batch, proj_mats_batch, joints_3d_gt_batch, joints_3d_valid_batch, info_batch) in enumerate(dataloader):
-            if images_batch is None:
-                continue
-
-            images_batch = images_batch.to(device)
-            proj_mats_batch = proj_mats_batch.to(device)
-            joints_3d_gt_batch = joints_3d_gt_batch.to(device)
-            joints_3d_valid_batch = joints_3d_valid_batch.to(device)
-
-            batch_size = images_batch.shape[0]
-
-            joints_3d_pred, joints_2d_pred, heatmaps_pred, confidences_pred = model(images_batch, proj_mats_batch)
-
-            # use predictions of invalid joints as groundtruth
-            #joints_clone = ~(torch.squeeze(joints_3d_valid_batch, 2).type(torch.bool))
-            #joints_3d_gt_batch[joints_clone] = joints_3d_pred[joints_clone].detach().clone()
-            joints_all_valid = torch.ones_like(joints_3d_valid_batch)
-
-            # calculate loss
-            loss = criterion(joints_3d_pred, joints_3d_gt_batch, joints_all_valid)
-            print("epoch: %d, iter: %d, loss: %.3f" % (e, iter_idx, loss.item()))
-            total_loss += batch_size * loss.item()
-            total_samples += batch_size
-
-            # optimize
-            opt.zero_grad()
-            loss.backward()
-            opt.step()
-
-        # save loss per epoch to tensorboard
-        total_loss /= total_samples
-        writer.add_scalar("training loss", total_loss, e)
+        # train for one epoch
+        train_loss = train_one_epoch(model, train_loader, criterion, opt, e, device, \
+                                     checkpoint_dir, writer, log_every_iters)
 
         # evaluate
         if e % 1 == 0:
@@ -152,15 +186,16 @@ def multiview_train(model, dataloader, criterion, opt, epochs, device, \
                 torch.save(model.state_dict(), os.path.join(checkpoint_dir_e, "weights.pth"))
 
     # save weights
-    torch.save(model.state_dict(), os.path.join(checkpoint_dir, "weights.pth"))
-    print("Training Done.")
+    # torch.save(model.state_dict(), os.path.join(checkpoint_dir, "weights.pth"))
+    # print("Training Done.")
 
 
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
     parser.add_argument('--config', type=str, default="experiments/syndata/test/syndata_alg_17jnts.yaml")
-    parser.add_argument('--continue_train', type=bool, default=False)
+    parser.add_argument('--resume', action='store_true')
+    parser.add_argument('--logdir', type=str, default="./logs")
     args = parser.parse_args()
 
     config = cfg.load_config(args.config)
@@ -190,4 +225,5 @@ if __name__ == "__main__":
     # configure optimizer
     opt = torch.optim.Adam(filter(lambda p : p.requires_grad, model.parameters()), lr=config.opt.lr)
 
-    multiview_train(model, dataloader, criterion, opt, config.opt.n_epochs, device, continue_train=args.continue_train)
+    multiview_train(model, dataloader, criterion, opt, config.opt.n_epochs, device, \
+                    resume=args.resume, logdir=args.logdir)
