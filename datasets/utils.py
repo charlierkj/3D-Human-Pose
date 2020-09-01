@@ -21,7 +21,7 @@ Joints_SynData = [
     "pelvis", #6
     "spine_02", #7
     "neck_01", #8
-    "head", #9
+    "head_end", #9
     "hand_r", #10
     "lowerarm_r", #11
     "upperarm_r", #12
@@ -172,10 +172,11 @@ def syndata_collate_fn(batch):
     return images_batch, proj_mats_batch, joints_3d_gt_batch, joints_3d_valid_batch, info_batch
 
 
-def syndata_loader(dataset, batch_size=1, shuffle=False):
+def syndata_loader(dataset, batch_size=1, shuffle=False, num_workers=4):
     dataloader = td.DataLoader(dataset,
                                batch_size=batch_size,
                                shuffle=shuffle,
+                               num_workers=num_workers,
                                collate_fn = syndata_collate_fn,
                                pin_memory=True)
     return dataloader
@@ -235,10 +236,11 @@ def human36m_prepare_batch(batch):
     return images_batch, proj_matricies_batch, keypoints_3d_batch_gt, keypoints_3d_validity_batch_gt, batch["indexes"]
 
 
-def human36m_loader(dataset, batch_size=1, shuffle=False):
+def human36m_loader(dataset, batch_size=1, shuffle=False, num_workers=4):
     dataloader = td.DataLoader(dataset,
                                batch_size=batch_size,
                                shuffle=shuffle,
+                               num_workers=num_workers,
                                collate_fn = human36m_collate_fn,
                                pin_memory=True)
     return dataloader

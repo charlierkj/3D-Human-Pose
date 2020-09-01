@@ -214,13 +214,18 @@ if __name__ == "__main__":
 
     model = AlgebraicTriangulationNet(config, device=device).to(device)
 
-    model = load_pretrained_model(model, config)
+    if config.model.init_weights:
+        model = load_pretrained_model(model, config)
     
     print("Loading data..")
 
     if args.data == "syndata":
-        dataset = MultiView_SynData(config.dataset.data_root, load_joints=config.model.backbone.num_joints, invalid_joints=(9, 16), bbox=config.dataset.bbox)
-        dataloader = datasets_utils.syndata_loader(dataset, batch_size=config.dataset.test.batch_size)
+        dataset = MultiView_SynData(config.dataset.data_root, load_joints=config.model.backbone.num_joints, invalid_joints=(9, 16), \
+                                    bbox=config.dataset.bbox, image_shape=config.dataset.image_shape)
+        dataloader = datasets_utils.syndata_loader(dataset, \
+                                                   batch_size=config.dataset.test.batch_size, \
+                                                   shuffle=config.dataset.test.shuffle, \
+                                                   num_workers=config.dataset.test.num_workers)
 
         save_folder = os.path.join(os.getcwd(), 'results/mocap_syndata_%djnts' % config.model.backbone.num_joints)
         #save_folder = os.path.join(os.getcwd(), 'results/mocap_syndata')
@@ -240,7 +245,10 @@ if __name__ == "__main__":
                     ignore_cameras=config.dataset.test.ignore_cameras if hasattr(config.dataset.val, "ignore_cameras") else [],
                     crop=config.dataset.test.crop if hasattr(config.dataset.val, "crop") else True,
                 )
-        dataloader = datasets_utils.human36m_loader(dataset, batch_size=config.dataset.test.batch_size)
+        dataloader = datasets_utils.human36m_loader(dataset, \
+                                                    batch_size=config.dataset.test.batch_size, \
+                                                    shuffle=config.dataset.test.shuffle, \
+                                                    num_workers=config.dataset.test.num_workers)
 
         save_folder = os.path.join(os.getcwd(), 'results/human36m_%djnts' % config.model.backbone.num_joints)
         human36m_test(model, dataloader, device, save_folder, make_vid=False)

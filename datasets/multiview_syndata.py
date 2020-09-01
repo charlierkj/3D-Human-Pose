@@ -15,10 +15,12 @@ import datasets.utils as datasets_utils
 
 class MultiView_SynData(td.Dataset):
 
-    def __init__(self, path, num_camera=4, load_joints=17, invalid_joints=None, bbox=None):
+    def __init__(self, path, num_camera=4, load_joints=17, invalid_joints=None, \
+                 bbox=None, image_shape=[384, 384]):
         """
         invalid_joints: tuple of indices for invalid joints; associated joints will not be used in evaluation.
         bbox: [upper_left_x, upper_left_y, lower_right-x, lower_right_y].
+        image_size: [width, height].
         """
         self.basepath = path
         self.form = ori_form
@@ -29,6 +31,8 @@ class MultiView_SynData(td.Dataset):
         self.len = 0
 
         self.invalid_jnts = () if invalid_joints is None else invalid_joints
+
+        self.image_shape = image_shape
 
         # torchvision transforms
         # self.transform = tv.transforms.Compose([
@@ -90,11 +94,12 @@ class MultiView_SynData(td.Dataset):
         # load data
         for camera_idx, camera_name in enumerate(self.camera_names):
             image_path = os.path.join(anim_path, camera_name, '%06d.jpg' % frame)
-            image_tensor = datasets_utils.load_image(image_path, bbox)
+            image_tensor = datasets_utils.load_image(image_path, bbox, self.image_shape)
             cam = self.cameras[subj_idx][anim_idx][camera_idx]
             
             if bbox is not None:
                 cam.update_after_crop(bbox)
+                cam.update_after_resize(self.image_shape)
 
             images.append(image_tensor)
             cameras.append(cam)

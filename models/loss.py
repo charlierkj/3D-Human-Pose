@@ -4,6 +4,29 @@ import torch
 from torch import nn
 
 
+class HeatmapMSELoss(nn.Module):
+    def __init__(self, image_shape):
+        super(HeatmapMSELoss, self).__init__()
+        self.criterion = nn.MSELoss(reduction='mean')
+        self.image_shape = image_shape
+
+    def forward(self, heatmaps_pred, proj_mats_batch, joints_3d_gt_batch, joints_3d_valid_batch):
+        batch_size = heatmaps_pred.shape[0]
+        num_views = heatmaps_pred.shape[1]
+        num_joints = heatmaps_pred.shape[2]
+        heatmap_shape = tuple(heatmaps_pred.shape[3:])
+        heatmaps_gt = torch.zeros_like(heatmaps_pred)
+        proj_mats_batch = proj_mats_batch.view(-1, 3, 4)
+        for batch_idx in range(batch_size):
+            joints_3d_gt = joints_3d_gt_batch[batch_idx, ...]
+            for view_idx in range(num_views):
+                proj_mat = proj_mats_batch[batch_idx, view_idx, ...]
+                joints_2d_gt = visualize.proj_to_2D(proj_mat, joints_3d_gt.T)
+                joints_2d_gt = joints_2d_gt.T
+                heatmaps_gt[batch_idx, view_idx, ...] = render_points_as_2d_gaussians(joints_2d_gt, 1, heatmap_shape)
+        loss = self.criterion(heatmaps_pred, heatmaps_gt)
+        return loss
+
 class KeypointsMSELoss(nn.Module):
     def __init__(self):
         super().__init__()

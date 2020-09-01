@@ -170,11 +170,16 @@ if __name__ == "__main__":
 
     model = AlgebraicTriangulationNet(config, device=device).to(device)
 
-    model = load_pretrained_model(model, config)
+    if config.model.init_weights:
+        model = load_pretrained_model(model, config)
 
     print("Loading data..")
-    dataset = MultiView_SynData(config.dataset.data_root, load_joints=config.model.backbone.num_joints, invalid_joints=(9, 16), bbox=config.dataset.bbox)
-    dataloader = datasets_utils.syndata_loader(dataset, batch_size=config.dataset.train.batch_size, shuffle=True)
+    dataset = MultiView_SynData(config.dataset.data_root, load_joints=config.model.backbone.num_joints, invalid_joints=None, \
+                                bbox=config.dataset.bbox, image_shape=config.dataset.image_shape)
+    dataloader = datasets_utils.syndata_loader(dataset, \
+                                               batch_size=config.dataset.train.batch_size, \
+                                               shuffle=config.dataset.train.shuffle, \
+                                               num_workers=config.dataset.train.num_workers)
 
     # configure loss
     if config.opt.criterion == "MSESmooth":

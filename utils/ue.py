@@ -6,8 +6,9 @@ class Camera_UE(object):
         self.K = self.set_K(w, h, fov)
         self.R = self.set_R(roll, pitch, yaw)
         self.T = self.set_T(x, y, z)
-        self.o = [w/2, h/2] # principle point in pixel
+        # self.o = [w/2, h/2] # principle point in pixel
         self.w, self.h = w, h # original image size
+        self.w_c, self.h_c = w, h # current image size
 
     def set_K(self, w, h, fov):
         """get 3x3 intrinsic matrix."""
@@ -72,7 +73,20 @@ class Camera_UE(object):
         upper_left_x, upper_left_y, lower_right_x, lower_right_y = bbox
         new_ox = self.w / 2 - upper_left_x
         new_oy = self.h / 2 - upper_left_y
-        self.o = [new_ox, new_oy]
-        self.K[0, 2] = self.o[0]
-        self.K[1, 2] = self.o[1]
-    
+        self.K[0, 2] = new_ox
+        self.K[1, 2] = new_oy
+        self.w_c = lower_right_x - upper_left_x
+        self.h_c = lower_right_y - upper_left_y
+
+    def update_after_resize(self, image_size):
+        new_w, new_h = image_size
+        fx, fy, ox, oy = self.K[0, 0], self.K[1, 1], self.K[0, 2], self.K[1, 2]
+        new_fx = fx * (new_w / self.w_c)
+        new_fy = fy * (new_h / self.h_c)
+        new_ox = ox * (new_w / self.w_c)
+        new_oy = oy * (new_h / self.h_c)
+        self.K[0, 0], self.K[1, 1], self.K[0, 2], self.K[1, 2] = new_fx, new_fy, new_ox, new_oy
+        self.w_c = new_w
+        self.h_c = new_h
+
+        
