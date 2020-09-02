@@ -1,7 +1,10 @@
 import os
 import numpy as np
 import argparse
+
 import torch
+torch.backends.cudnn.benchmark = True
+
 from torch import nn
 from datetime import datetime
 from PIL import Image
@@ -130,7 +133,7 @@ def train_one_epoch(model, train_loader, criterion, metric, opt, e, device, \
             mean_loss_per_log = sum_loss_per_log / sum_samples_per_log
             pck_acc_per_log = sum_detected_per_log.type(torch.float32) / sum_samples_per_log.type(torch.float32)
             mean_error_per_log = sum_error_per_log / sum_samples_per_log
-            print("epoch: %d, iter: %d, train loss: %.3f, train acc: %.3f, train error: %.3f" \
+            print("epoch: %d, iter: %d, train loss: %f, train acc: %.3f, train error: %.3f" \
                   % (e, logging_iter, mean_loss_per_log, pck_acc_per_log, mean_error_per_log))
 
             if writer is not None:
@@ -208,7 +211,7 @@ def multiview_train(config, model, train_loader, val_loader, criterion, opt, epo
         writer.add_scalar("test_pck/epoch", test_acc, e)
         writer.add_scalar("test_error/epoch", test_error, e)
         
-        print('Epoch: %03d | Train Loss: %.3f | Train Acc: %.3f | Train Error: %.3f | Test Acc: %.3f | Test Error: %.3f' \
+        print('Epoch: %03d | Train Loss: %f | Train Acc: %.3f | Train Error: %.3f | Test Acc: %.3f | Test Error: %.3f' \
               % (e, train_loss, train_acc, train_error, test_acc, test_error))
 
         # save weights

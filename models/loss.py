@@ -44,6 +44,7 @@ class PCK(nn.Module):
         bbox_w = joints_2d_gt_batch[..., 0].max(-1, keepdim=True)[0] - joints_2d_gt_batch[..., 0].min(-1, keepdim=True)[0] # batch_size x num_views x 1
         bbox_h = joints_2d_gt_batch[..., 1].max(-1, keepdim=True)[0] - joints_2d_gt_batch[..., 1].min(-1, keepdim=True)[0] # batch_size x num_views x 1
         torso_diam = torch.max(bbox_w, bbox_h) # batch_size x num_views x 1
+        # print(torso_diam)
         diff = joints_2d_pred - joints_2d_gt_batch
         dist = torch.norm(diff, dim=-1) # batch_size x num_views x num_joints
         detected = (dist < self.thresh * torso_diam).sum()

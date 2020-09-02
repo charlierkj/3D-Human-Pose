@@ -3,7 +3,10 @@ import argparse
 import pickle
 from collections import defaultdict
 import numpy as np
+
 import torch
+torch.backends.cudnn.benchmark = True
+
 from PIL import Image
 
 from utils import cfg
