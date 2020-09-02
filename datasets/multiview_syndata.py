@@ -39,7 +39,6 @@ class MultiView_SynData(td.Dataset):
             self.subj = test_subj
         
         self.basepath = path
-        self.form = ori_form
         # self.subj = sorted(os.listdir(self.basepath))
         self.framelist = []
         self.camera_names = []
