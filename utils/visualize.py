@@ -155,7 +155,7 @@ def to_homogeneous_coords_batch(pts_cart_batch):
     """
     if isinstance(pts_cart_batch, np.ndarray):
         return np.concatenate((pts_cart_batch, np.ones((*pts_cart_batch.shape[0:-1], 1))), axis=-1)
-    elif torch.is_tensor(pts_cart):
+    elif torch.is_tensor(pts_cart_batch):
         return torch.cat((pts_cart_batch, \
                           torch.ones((*pts_cart_batch.shape[0:-1], 1)).type(pts_cart_batch.dtype).to(pts_cart_batch.device)),\
                          dim=-1)

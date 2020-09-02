@@ -9,13 +9,14 @@ from PIL import Image
 from utils import cfg
 from utils.eval import *
 from models.triangulation import AlgebraicTriangulationNet
+from models.loss import PCK, KeypointsL2Loss
 from datasets.multiview_syndata import MultiView_SynData
 from datasets.human36m import Human36MMultiViewDataset
 import datasets.utils as datasets_utils
 
 import utils.visualize as visualize
 
-from train import load_pretrained_model
+import train
 
 
 def test_one_epoch(model, val_loader, metric, device):
@@ -24,7 +25,7 @@ def test_one_epoch(model, val_loader, metric, device):
         total_samples = 0
         total_error = 0
         total_detected = 0
-        for iter_idx, (images_batch, proj_mats_batch, joints_3d_gt_batch, joints_3d_valid_batch, info_batch) in enumerate(dataloader):
+        for iter_idx, (images_batch, proj_mats_batch, joints_3d_gt_batch, joints_3d_valid_batch, info_batch) in enumerate(val_loader):
             if images_batch is None:
                 continue
                     
@@ -40,6 +41,7 @@ def test_one_epoch(model, val_loader, metric, device):
                                                joints_3d_gt_batch, joints_3d_valid_batch)
                 total_detected += detected
                 total_samples += num_samples
+                # print(detected, num_samples)
                 
             elif isinstance(metric, KeypointsL2Loss):
                 error = metric(joints_3d_pred, joints_3d_gt_batch, joints_3d_valid_batch)
@@ -217,7 +219,7 @@ if __name__ == "__main__":
     model = AlgebraicTriangulationNet(config, device=device).to(device)
 
     if config.model.init_weights:
-        model = load_pretrained_model(model, config)
+        model = train.load_pretrained_model(model, config)
     
     print("Loading data..")
 
