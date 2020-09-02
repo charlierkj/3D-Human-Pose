@@ -58,7 +58,7 @@ dataset:
     randomize_n_views: false
     min_n_views: null
     max_n_views: null
-    num_workers: 8
+    num_workers: 4
 
   test:
     batch_size: 4
@@ -72,6 +72,6 @@ dataset:
     randomize_n_views: false
     min_n_views: null
     max_n_views: null
-    num_workers: 8
+    num_workers: 4
 
     retain_every_n_frames_in_test: 1
