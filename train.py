@@ -5,6 +5,7 @@ import torch
 from torch import nn
 from datetime import datetime
 from PIL import Image
+import yaml
 
 from tensorboardX import SummaryWriter
 
@@ -14,7 +15,8 @@ from models.loss import HeatmapMSELoss, PCK, KeypointsMSELoss, KeypointsMSESmoot
 from datasets.multiview_syndata import MultiView_SynData
 import datasets.utils as datasets_utils
 import utils.visualize as visualize
-from test import test_one_epoch
+import test
+import utils.eval as utils_eval
 
 
 def load_pretrained_model(model, config, init_joints=17):
@@ -69,16 +71,19 @@ def load_pretrained_model(model, config, init_joints=17):
 
 
 def train_one_epoch(model, train_loader, criterion, metric, opt, e, device, \
-                    checkpoint_dir, writer=None, log_every_iters=100):
+                    checkpoint_dir, writer=None, log_every_iters=1):
     model.train()
-    total_samples = train_loader.dataset.__len__()
     batch_size = train_loader.batch_size
     iters_per_epoch = round(total_samples / batch_size)
+    print("Estimated iterations per epoch is %d." % iters_per_epoch)
     total_train_loss = 0
+    total_samples = 0
 
     sum_loss_per_log = 0
-    sum_samples_per_log = 0
-    
+    sum_detected_per_log = 0
+    sum_error_per_log = 0
+    sum_samples_per_log = 0 # num_joints or num_frames
+
     for iter_idx, (images_batch, proj_mats_batch, joints_3d_gt_batch, joints_3d_valid_batch, info_batch) in enumerate(train_loader):
         if images_batch is None:
             continue
@@ -98,26 +103,43 @@ def train_one_epoch(model, train_loader, criterion, metric, opt, e, device, \
         #joints_all_valid = torch.ones_like(joints_3d_valid_batch)
 
         # calculate loss
-        loss = criterion(joints_3d_pred, joints_3d_gt_batch, joints_3d_valid_batch)
-        if iter_idx % log_every_iters == log_every_iters - 1:
-            logging_iter = iter_idx + 1 - log_every_iters
-            mean_loss_per_log = sum_loss_per_log / sum_samples_per_log
-            print("epoch: %d, iter: %d, train loss: %.3f" % (e, logging_iter, mean_loss_per_log))
-
-            if writer is not None:
-                writer.add_scalar("train loss (iter)", mean_loss_per_log, e * iters_per_epoch + logging_iter)
-
-            sum_loss_per_log = 0
-            sum_samples_per_log = 0
-        
-        total_train_loss += batch_size * loss.item()
-        sum_loss_per_log += batch_size * loss.item()
-        sum_samples_per_log += batch_size
+        if isinstance(criterion, HeatmapMSELoss):
+            loss = criterion(heatmaps_pred, proj_mats_batch, joints_3d_gt_batch, joints_3d_valid_batch)
+        else:
+            loss = criterion(joints_3d_pred, joints_3d_gt_batch, joints_3d_valid_batch)
 
         # optimize
         opt.zero_grad()
         loss.backward()
         opt.step()
+
+        # evaluate batch
+        with torch.no_grad():
+            detected, error, num_samples = utils_eval.eval_one_batch(metric, joints_3d_pred, joints_2d_pred, \
+                                                                     proj_mats_batch, joints_3d_gt_batch, joints_3d_valid_batch)
+            sum_samples_per_log += num_samples
+            sum_loss_per_log += num_samples * loss.item()
+            sum_detected_per_log += detected
+            sum_error_per_log += num_samples * error
+
+            total_train_loss += num_samples * loss.item()
+            total_samples += num_samples
+            
+        if iter_idx % log_every_iters == log_every_iters - 1:
+            logging_iter = iter_idx + 1 - log_every_iters
+            mean_loss_per_log = sum_loss_per_log / sum_samples_per_log
+            pck_acc_per_log = sum_detected_per_log / sum_samples_per_log
+            mean_error_per_log = sum_error_per_log / sum_samples_per_log
+            print("epoch: %d, iter: %d, train loss: %.3f, train acc: %.3f, train error: %.3f" \
+                  % (e, logging_iter, mean_loss_per_log, pck_acc_per_log, mean_error_per_log))
+
+            if writer is not None:
+                writer.add_scalar("train loss (iter)", mean_loss_per_log, e * iters_per_epoch + logging_iter)
+                writer.add_scalar("train pck (iter)", pck_acc_per_log, e * iters_per_epoch + logging_iter)
+                writer.add_scalar("train error (iter)", mean_error_per_log, e * iters_per_epoch + logging_iter)
+
+            sum_loss_per_log = 0
+            sum_samples_per_log = 0
 
     # save training loss per epoch to tensorboard
     mean_loss = total_train_loss / total_samples
@@ -125,22 +147,22 @@ def train_one_epoch(model, train_loader, criterion, metric, opt, e, device, \
         writer.add_scalar("train loss (epoch)",  mean_loss, e)
 
     # evaluate using training set
-    with torch.no_grad():
-        model.eval()
-        pck_acc, mean_error = test_one_epoch(model, train_loader, metric, device)
-        if writer is not None:
-            writer.add_scalar("train pck (epoch)", pck_acc, e)
-            writer.add_scalar("train error (epoch)", mean_error, e)
+    #with torch.no_grad():
+    #    model.eval()
+    #    pck_acc, mean_error = test.test_one_epoch(model, train_loader, metric, device)
+    #    if writer is not None:
+    #        writer.add_scalar("train pck (epoch)", pck_acc, e)
+    #        writer.add_scalar("train error (epoch)", mean_error, e)
         
     return mean_loss, pck_acc, mean_error
     
 
 def multiview_train(config, model, train_loader, val_loader, criterion, opt, epochs, device, \
-                    log_every_iters=100, \
+                    log_every_iters=1, \
                     resume=False, logdir="./logs", exp_log="exp_27jnts@15.08.2020-05.15.16"):
     # configure dir and writer for saving weights and intermediate evaluation
     if not resume:
-        experiment_name = "{}_{}jnts@{}".format("exp", "%d" % dataloader.dataset.num_jnts, datetime.now().strftime("%d.%m.%Y-%H.%M.%S"))
+        experiment_name = "{}_{}jnts@{}".format("exp", "%d" % config.model.backbone.num_joints, datetime.now().strftime("%d.%m.%Y-%H.%M.%S"))
         start_epoch = 0
     else:
         experiment_name = exp_log
@@ -155,6 +177,8 @@ def multiview_train(config, model, train_loader, val_loader, criterion, opt, epo
 
     param_dict = {}
     param_dict["dataset"] = config.dataset.type
+    param_dict["train_batch_size"] = config.dataset.train.batch_size
+    param_dict["test_batch_size"] = config.dataset.test.batch_size
     param_dict["image_shape"] = config.dataset.image_shape
     param_dict["num_joints"] = config.model.backbone.num_joints
     param_dict["backbone_num_layers"] = config.model.backbone.num_layers
@@ -166,7 +190,7 @@ def multiview_train(config, model, train_loader, val_loader, criterion, opt, epo
     
     model.to(device)
 
-    if isinstance(model, HeatmapMSELoss):
+    if isinstance(criterion, HeatmapMSELoss):
         metric = PCK()
     else:
         metric = KeypointsL2Loss()
@@ -174,10 +198,10 @@ def multiview_train(config, model, train_loader, val_loader, criterion, opt, epo
     for e in range(start_epoch, epochs):
         # train for one epoch
         train_loss, train_acc, train_error = train_one_epoch(model, train_loader, criterion, metric, opt, e, device, \
-                                                                      checkpoint_dir, writer, log_every_iters)
+                                                             checkpoint_dir, writer, log_every_iters)
 
         # evaluate
-        test_acc, test_error = test_one_epoch(model, val_loader, metric, device)
+        test_acc, test_error = test.test_one_epoch(model, val_loader, metric, device)
         
         writer.add_scalar("test pck (epoch)", test_acc, e)
         writer.add_scalar("test error (epoch)", test_error, e)
@@ -207,13 +231,15 @@ if __name__ == "__main__":
     config = cfg.load_config(args.config)
 
     device = torch.device(int(config.gpu_id))
+    # device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     print(device)
 
     model = AlgebraicTriangulationNet(config, device=device)
 
-    model = torch.nn.DataParallel(model).to(device)
+    model = torch.nn.DataParallel(model, device_ids=[int(config.gpu_id)])
 
     if config.model.init_weights:
+        print("Initializing model weights..")
         model = load_pretrained_model(model, config)
 
     # load data

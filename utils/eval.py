@@ -33,3 +33,16 @@ def evaluate_one_batch(joints_3d_pred, joints_3d_gt_batch, joints_3d_valid_batch
         error_batch = joints_3d_valid_batch * error_batch.unsqueeze(2) # batch_size x num_joints x 1
         error_batch = error_batch.mean((1, 2)) # mean error per sample in batch
     return error_batch
+
+
+def eval_one_batch(metric, joints_3d_pred, joints_2d_pred, \
+                   proj_mats_batch, joints_3d_gt_batch, joints_3d_valid_batch):
+    error = 0
+    detected = 0
+    if isinstance(metric, PCK):
+        detected, num_samples = metric(joints_2d_pred, proj_mats_batch, \
+                                       joints_3d_gt_batch, joints_3d_valid_batch)
+    elif isinstance(metric, KeypointsL2Loss):
+        error = metric(joints_3d_pred, joints_3d_gt_batch, joints_3d_valid_batch).item()
+        num_samples = joints_3d_pred.shape[0]
+    return detected, error, num_samples # either total_joints, or total_frames
