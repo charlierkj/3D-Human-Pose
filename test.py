@@ -51,15 +51,6 @@ def test_one_epoch(model, val_loader, metric, device):
 
     return pck_acc, mean_error
 
-        total_error /= total_samples
-        writer.add_scalar("training error", total_error, e)
-        print('Epoch: %03d | Train Loss: %.3f | Train Error: %.2f' % (e, total_loss, total_error))
-
-        # save weights
-        checkpoint_dir_e = os.path.join(checkpoint_dir, "%04d" % e)
-        os.makedirs(checkpoint_dir_e, exist_ok=True)
-        torch.save(model.state_dict(), os.path.join(checkpoint_dir_e, "weights.pth"))
-
 
 def syndata_test(model, dataloader, device, save_folder, show_img=False, make_gif=False, make_vid=False):
     frames_per_scene = 60
