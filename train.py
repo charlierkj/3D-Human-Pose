@@ -149,12 +149,12 @@ def train_one_epoch(model, train_loader, criterion, metric, opt, e, device, \
         writer.add_scalar("train_loss/epoch",  mean_loss, e)
 
     # evaluate using training set
-    #with torch.no_grad():
-    #    model.eval()
-    #    pck_acc, mean_error = test.test_one_epoch(model, train_loader, metric, device)
-    #    if writer is not None:
-    #        writer.add_scalar("train_pck/epoch", pck_acc, e)
-    #        writer.add_scalar("train_error/epoch", mean_error, e)
+    with torch.no_grad():
+        model.eval()
+        pck_acc, mean_error = test.test_one_epoch(model, train_loader, metric, device)
+        if writer is not None:
+            writer.add_scalar("train_pck/epoch", pck_acc, e)
+            writer.add_scalar("train_error/epoch", mean_error, e)
         
     return mean_loss, pck_acc, mean_error
     
