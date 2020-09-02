@@ -2,7 +2,7 @@ title: "human36m_alg"
 kind: "human36m"
 vis_freq: 20
 vis_n_elements: 10
-gpu_id: 6
+gpu_id: 2
 
 opt:
   criterion: "Heatmap"
@@ -61,7 +61,7 @@ dataset:
     num_workers: 4
 
   test:
-    batch_size: 8
+    batch_size: 4
     
     with_damaged_actions: true
     undistort_images: true

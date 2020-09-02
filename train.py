@@ -74,7 +74,7 @@ def train_one_epoch(model, train_loader, criterion, metric, opt, e, device, \
                     checkpoint_dir, writer=None, log_every_iters=1):
     model.train()
     batch_size = train_loader.batch_size
-    iters_per_epoch = round(total_samples / batch_size)
+    iters_per_epoch = round(train_loader.dataset.__len__() / batch_size)
     print("Estimated iterations per epoch is %d." % iters_per_epoch)
     total_train_loss = 0
     total_samples = 0
@@ -128,15 +128,15 @@ def train_one_epoch(model, train_loader, criterion, metric, opt, e, device, \
         if iter_idx % log_every_iters == log_every_iters - 1:
             logging_iter = iter_idx + 1 - log_every_iters
             mean_loss_per_log = sum_loss_per_log / sum_samples_per_log
-            pck_acc_per_log = sum_detected_per_log / sum_samples_per_log
+            pck_acc_per_log = sum_detected_per_log.type(torch.float32) / sum_samples_per_log.type(torch.float32)
             mean_error_per_log = sum_error_per_log / sum_samples_per_log
             print("epoch: %d, iter: %d, train loss: %.3f, train acc: %.3f, train error: %.3f" \
                   % (e, logging_iter, mean_loss_per_log, pck_acc_per_log, mean_error_per_log))
 
             if writer is not None:
-                writer.add_scalar("train loss (iter)", mean_loss_per_log, e * iters_per_epoch + logging_iter)
-                writer.add_scalar("train pck (iter)", pck_acc_per_log, e * iters_per_epoch + logging_iter)
-                writer.add_scalar("train error (iter)", mean_error_per_log, e * iters_per_epoch + logging_iter)
+                writer.add_scalar("train_loss/iter", mean_loss_per_log, e * iters_per_epoch + logging_iter)
+                writer.add_scalar("train_pck/iter", pck_acc_per_log, e * iters_per_epoch + logging_iter)
+                writer.add_scalar("train_error/iter", mean_error_per_log, e * iters_per_epoch + logging_iter)
 
             sum_samples_per_log = 0
             sum_loss_per_log = 0
@@ -146,21 +146,21 @@ def train_one_epoch(model, train_loader, criterion, metric, opt, e, device, \
     # save training loss per epoch to tensorboard
     mean_loss = total_train_loss / total_samples
     if writer is not None:
-        writer.add_scalar("train loss (epoch)",  mean_loss, e)
+        writer.add_scalar("train_loss/epoch",  mean_loss, e)
 
     # evaluate using training set
     #with torch.no_grad():
     #    model.eval()
     #    pck_acc, mean_error = test.test_one_epoch(model, train_loader, metric, device)
     #    if writer is not None:
-    #        writer.add_scalar("train pck (epoch)", pck_acc, e)
-    #        writer.add_scalar("train error (epoch)", mean_error, e)
+    #        writer.add_scalar("train_pck/epoch", pck_acc, e)
+    #        writer.add_scalar("train_error/epoch", mean_error, e)
         
     return mean_loss, pck_acc, mean_error
     
 
 def multiview_train(config, model, train_loader, val_loader, criterion, opt, epochs, device, \
-                    log_every_iters=1, \
+                    log_every_iters=20, \
                     resume=False, logdir="./logs", exp_log="exp_27jnts@15.08.2020-05.15.16"):
     # configure dir and writer for saving weights and intermediate evaluation
     if not resume:
@@ -205,8 +205,8 @@ def multiview_train(config, model, train_loader, val_loader, criterion, opt, epo
         # evaluate
         test_acc, test_error = test.test_one_epoch(model, val_loader, metric, device)
         
-        writer.add_scalar("test pck (epoch)", test_acc, e)
-        writer.add_scalar("test error (epoch)", test_error, e)
+        writer.add_scalar("test_pck/epoch", test_acc, e)
+        writer.add_scalar("test_error/epoch", test_error, e)
         
         print('Epoch: %03d | Train Loss: %.3f | Train Acc: %.3f | Train Error: %.3f | Test Acc: %.3f | Test Error: %.3f' \
               % (e, train_loss, train_acc, train_error, test_acc, test_error))
@@ -270,7 +270,7 @@ if __name__ == "__main__":
     elif config.opt.criterion == "MAE":
         criterion = KeypointsMAELoss()
     elif config.opt.criterion == "Heatmap":
-        criterion = HeatmapMSELoss(config.dataset.image_shape)
+        criterion = HeatmapMSELoss(config)
 
     # configure optimizer
     opt = torch.optim.Adam(filter(lambda p : p.requires_grad, model.parameters()), lr=config.opt.lr)

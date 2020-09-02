@@ -8,10 +8,10 @@ from utils.op import render_points_as_2d_gaussians
 
 
 class HeatmapMSELoss(nn.Module):
-    def __init__(self, image_shape):
+    def __init__(self, config):
         super(HeatmapMSELoss, self).__init__()
         self.criterion = nn.MSELoss(reduction='mean')
-        self.image_shape = image_shape # [w, h]
+        self.image_shape = config.dataset.image_shape # [w, h]
 
     def forward(self, heatmaps_pred, proj_mats_batch, joints_3d_gt_batch, joints_3d_valid_batch):
         batch_size = heatmaps_pred.shape[0]
@@ -30,7 +30,7 @@ class HeatmapMSELoss(nn.Module):
                 sigmas = torch.ones_like(joints_2d_gt_scaled) # unit str
                 heatmaps_gt[batch_idx, view_idx, ...] = render_points_as_2d_gaussians(joints_2d_gt_scaled, sigmas, heatmap_shape)
         loss = self.criterion(heatmaps_pred, heatmaps_gt)
-        return loss
+        return loss * heatmap_shape[0] * heatmap_shape[1]
 
 
 class PCK(nn.Module):

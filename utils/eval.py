@@ -1,6 +1,7 @@
 import numpy as np
 import torch
 
+from models.loss import PCK, KeypointsL2Loss
 
 def evaluate_one_scene(joints_3d_pred_path, scene_folder, invalid_joints=(9, 16), path=True):
     """joints_3d_pred_path: the path where npy file is stored.
