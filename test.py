@@ -18,6 +18,49 @@ import utils.visualize as visualize
 from train import load_pretrained_model
 
 
+def test_one_epoch(model, val_loader, metric, device):
+    model.eval()
+    with torch.no_grad():
+        total_samples = 0
+        total_error = 0
+        total_detected = 0
+        for iter_idx, (images_batch, proj_mats_batch, joints_3d_gt_batch, joints_3d_valid_batch, info_batch) in enumerate(dataloader):
+            if images_batch is None:
+                continue
+                    
+            images_batch = images_batch.to(device)
+            proj_mats_batch = proj_mats_batch.to(device)
+            joints_3d_gt_batch = joints_3d_gt_batch.to(device)
+            joints_3d_valid_batch = joints_3d_valid_batch.to(device)
+            batch_size = images_batch.shape[0]
+            joints_3d_pred, joints_2d_pred, heatmaps_pred, confidences_pred = model(images_batch, proj_mats_batch)
+
+            if isinstance(metric, PCK):
+                detected, num_samples = metric(joints_2d_pred, proj_mats_batch, \
+                                               joints_3d_gt_batch, joints_3d_valid_batch)
+                total_detected += detected
+                total_samples += num_samples
+                
+            elif isinstance(metric, KeypointsL2Loss):
+                error = metric(joints_3d_pred, joints_3d_gt_batch, joints_3d_valid_batch)
+                total_error += batch_size * error.item()
+                total_samples += batch_size
+
+        pck_acc = total_detected / total_samples # 2D
+        mean_error = total_error / total_samples # 3D
+
+    return pck_acc, mean_error
+
+        total_error /= total_samples
+        writer.add_scalar("training error", total_error, e)
+        print('Epoch: %03d | Train Loss: %.3f | Train Error: %.2f' % (e, total_loss, total_error))
+
+        # save weights
+        checkpoint_dir_e = os.path.join(checkpoint_dir, "%04d" % e)
+        os.makedirs(checkpoint_dir_e, exist_ok=True)
+        torch.save(model.state_dict(), os.path.join(checkpoint_dir_e, "weights.pth"))
+
+
 def syndata_test(model, dataloader, device, save_folder, show_img=False, make_gif=False, make_vid=False):
     frames_per_scene = 60
     

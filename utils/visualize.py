@@ -120,6 +120,21 @@ def proj_to_2D(proj_mat, pts_3d):
     pts_2d = to_cartesian_coords(pts_2d_homo) # 2 x n
     return pts_2d
 
+def proj_to_2D_batch(proj_mats_batch, pts_3d_batch):
+    """
+    proj_mats_batch: batch_size x num_views x 3 x 4.
+    pts_3d_batch: batch_size x num_joints x 3.
+    """
+    pts_3d_homo_batch = to_homogeneous_coords_batch(pts_3d_batch) # batch_size x num_joints x 4
+    if isinstance(pts_3d_homo_batch, np.ndarray) and isinstance(proj_mats_batch, np.ndarray):
+        pts_3d_homo_batch = np.expand_dims(pts_3d_homo_batch, axis=1) # batch_size x 1 x num_joints x 4
+        pts_2d_homo_batch = pts_3d_homo_batch @ np.swapaxes(proj_mats_batch, 2, 3) # batch_size x num_views x num_joints x 3
+    elif torch.is_tensor(pts_3d_homo_batch) and torch.is_tensor(proj_mats_batch):
+        pts_3d_homo_batch = pts_3d_homo_batch.unsqueeze(1) # batch_size x 1 x num_joints x 4
+        pts_2d_homo_batch = pts_3d_homo_batch @ proj_mats_batch.transpose(2, 3) # batch_size x num_views x num_joints x 3
+    pts_2d_batch = to_cartesian_coords_batch(pts_2d_homo_batch) # batch_size x num_views x num_joints x 2
+    return pts_2d_batch
+
 def proj_to_camspace(ext_mat, pts_3d):
     """project to 3D camera space"""
     pts_3d_homo = to_homogeneous_coords(pts_3d) # 4 x n
@@ -133,9 +148,32 @@ def to_homogeneous_coords(pts_cart):
     elif torch.is_tensor(pts_cart):
         return torch.cat((pts_cart, torch.ones((1, pts_cart.shape[1])).type(pts_cart.dtype).to(pts_cart.device)), dim=0)
 
+def to_homogeneous_coords_batch(pts_cart_batch):
+    """conversion from cartesian to homogeneous coordinates.
+    pts_cart_batch: batch_size x num_joints x 3, or, batch_size x num_views x num_joints x 2.
+    output: batch_size x num_joints x 4, or, batch_size x num_views x num_joints x 3.
+    """
+    if isinstance(pts_cart_batch, np.ndarray):
+        return np.concatenate((pts_cart_batch, np.ones((*pts_cart_batch.shape[0:-1], 1))), axis=-1)
+    elif torch.is_tensor(pts_cart):
+        return torch.cat((pts_cart_batch, \
+                          torch.ones((*pts_cart_batch.shape[0:-1], 1)).type(pts_cart_batch.dtype).to(pts_cart_batch.device)),\
+                         dim=-1)
+
 def to_cartesian_coords(pts_homo):
     """conversion from homogeneous to cartesian coodinates."""
     return pts_homo[:-1, :] / pts_homo[-1, :]
+
+def to_cartesian_coords_batch(pts_homo_batch):
+    """conversion from homogeneous to cartesian coodinates.
+    pts_homo_batch: batch_size x num_joints x 4, or, batch_size x num_views x num_joints x 3.
+    output: batch_size x num_joints x 3, or, batch_size x num_views x num_joints x 2.
+    """
+    if isinstance(pts_homo_batch, np.ndarray):
+        return pts_homo_batch[..., :-1] / np.expand_dims(pts_homo_batch[..., -1], axis=-1)
+    elif torch.is_tensor(pts_homo_batch):
+        return pts_homo_batch[..., :-1] / pts_homo_batch[..., -1].unsqueeze(-1)
+
 
 def make_gif(temp_folder, write_path, remove_imgs=False):
     write_folder = os.path.split(write_path)[0]

@@ -15,16 +15,32 @@ import datasets.utils as datasets_utils
 
 class MultiView_SynData(td.Dataset):
 
-    def __init__(self, path, num_camera=4, load_joints=17, invalid_joints=None, \
-                 bbox=None, image_shape=[384, 384]):
+    def __init__(self, path, num_camera=4, load_joints=17, invalid_joints=(), \
+                 bbox=None, image_shape=[384, 384], \
+                 train=False, test=False):
         """
         invalid_joints: tuple of indices for invalid joints; associated joints will not be used in evaluation.
         bbox: [upper_left_x, upper_left_y, lower_right-x, lower_right_y].
         image_size: [width, height].
         """
+        assert train or test
+
+        train_subj = ['S0map', 'S0rand', 'S0real', \
+                      'S1map', 'S1rand', 'S1real', \
+                      'S2map', 'S2rand', 'S2real', \
+                      'S3map', 'S3rand', 'S3real']
+        
+        test_subj = ['S4map', 'S4rand', 'S4real', \
+                     'S5map', 'S5rand', 'S5real']
+
+        if train:
+            self.subj = train_subj
+        elif test:
+            self.subj = test_subj
+        
         self.basepath = path
         self.form = ori_form
-        self.subj = sorted(os.listdir(self.basepath))
+        # self.subj = sorted(os.listdir(self.basepath))
         self.framelist = []
         self.camera_names = []
         self.cameras = {}
@@ -110,10 +126,10 @@ class MultiView_SynData(td.Dataset):
         data['cameras'] = cameras
 
         keypoints = datasets_utils.load_joints(self.joints_name, skeleton_path)
-        preds_path = os.path.join("results/mocap_syndata/preds", self.subj[subj_idx], "anim_%03d" % anim_idx, "joints_3d.npy")
+        #preds_path = os.path.join("results/mocap_syndata/preds", self.subj[subj_idx], "anim_%03d" % anim_idx, "joints_3d.npy")
         #print(os.path.abspath(preds_path))
-        joints_3d_pred = np.load(preds_path)
-        keypoints[self.invalid_jnts, :] = joints_3d_pred[frame, self.invalid_jnts, :] # load preds as gt for head joints
+        #joints_3d_pred = np.load(preds_path)
+        #keypoints[self.invalid_jnts, :] = joints_3d_pred[frame, self.invalid_jnts, :] # load preds as gt for head joints
         keypts_tensor = torch.from_numpy(keypoints)
         data['joints_3d_gt'] = keypts_tensor # joints groundtruth, tensor of size n x 3
 

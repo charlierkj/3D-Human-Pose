@@ -10,11 +10,11 @@ from tensorboardX import SummaryWriter
 
 from utils import cfg
 from models.triangulation import AlgebraicTriangulationNet
-from models.loss import KeypointsMSELoss, KeypointsMSESmoothLoss
+from models.loss import HeatmapMSELoss, PCK, KeypointsMSELoss, KeypointsMSESmoothLoss, KeypointsMAELoss, KeypointsL2Loss
 from datasets.multiview_syndata import MultiView_SynData
 import datasets.utils as datasets_utils
-
 import utils.visualize as visualize
+from test import test_one_epoch
 
 
 def load_pretrained_model(model, config, init_joints=17):
@@ -68,7 +68,7 @@ def load_pretrained_model(model, config, init_joints=17):
     return model
 
 
-def train_one_epoch(model, train_loader, criterion, opt, e, device, \
+def train_one_epoch(model, train_loader, criterion, metric, opt, e, device, \
                     checkpoint_dir, writer=None, log_every_iters=100):
     model.train()
     total_samples = train_loader.dataset.__len__()
@@ -105,7 +105,7 @@ def train_one_epoch(model, train_loader, criterion, opt, e, device, \
             print("epoch: %d, iter: %d, train loss: %.3f" % (e, logging_iter, mean_loss_per_log))
 
             if writer is not None:
-                writer.add_scalar("training loss (iter)", mean_loss_per_log, e * iters_per_epoch + logging_iter)
+                writer.add_scalar("train loss (iter)", mean_loss_per_log, e * iters_per_epoch + logging_iter)
 
             sum_loss_per_log = 0
             sum_samples_per_log = 0
@@ -122,18 +122,20 @@ def train_one_epoch(model, train_loader, criterion, opt, e, device, \
     # save training loss per epoch to tensorboard
     mean_loss = total_train_loss / total_samples
     if writer is not None:
-        writer.add_scalar("training loss (epoch)",  mean_loss, e)
+        writer.add_scalar("train loss (epoch)",  mean_loss, e)
 
     # evaluate using training set
     with torch.no_grad():
         model.eval()
-        if isinstance(criterion, HeatmapMSELoss):
-            pck = 
-    return mean_loss
+        pck_acc, mean_error = test_one_epoch(model, train_loader, metric, device)
+        if writer is not None:
+            writer.add_scalar("train pck (epoch)", pck_acc, e)
+            writer.add_scalar("train error (epoch)", mean_error, e)
+        
+    return mean_loss, pck_acc, mean_error
     
 
-
-def multiview_train(model, train_loader, val_loader, criterion, opt, epochs, device, \
+def multiview_train(config, model, train_loader, val_loader, criterion, opt, epochs, device, \
                     log_every_iters=100, \
                     resume=False, logdir="./logs", exp_log="exp_27jnts@15.08.2020-05.15.16"):
     # configure dir and writer for saving weights and intermediate evaluation
@@ -149,45 +151,49 @@ def multiview_train(model, train_loader, val_loader, criterion, opt, epochs, dev
     checkpoint_dir = os.path.join(experiment_dir, "checkpoint")
     os.makedirs(checkpoint_dir, exist_ok=True)
     writer = SummaryWriter(os.path.join(experiment_dir, "tensorboard"))
+    yaml_path = os.path.join(experiment_dir, "param.yaml")
+
+    param_dict = {}
+    param_dict["dataset"] = config.dataset.type
+    param_dict["image_shape"] = config.dataset.image_shape
+    param_dict["num_joints"] = config.model.backbone.num_joints
+    param_dict["backbone_num_layers"] = config.model.backbone.num_layers
+    param_dict["criterion"] = config.opt.criterion
+    param_dict["opt_lr"] = config.opt.lr
+    param_dict["epochs"] = config.opt.n_epochs
+    with open(yaml_path, 'w') as f:
+        data = yaml.dump(param_dict, f)
     
     model.to(device)
 
+    if isinstance(model, HeatmapMSELoss):
+        metric = PCK()
+    else:
+        metric = KeypointsL2Loss()
+
     for e in range(start_epoch, epochs):
         # train for one epoch
-        train_loss = train_one_epoch(model, train_loader, criterion, opt, e, device, \
-                                     checkpoint_dir, writer, log_every_iters)
+        train_loss, train_acc, train_error = train_one_epoch(model, train_loader, criterion, metric, opt, e, device, \
+                                                                      checkpoint_dir, writer, log_every_iters)
 
         # evaluate
-        if e % 1 == 0:
-            with torch.no_grad():
-                model.eval()
-                total_error = 0
-                for iter_idx, (images_batch, proj_mats_batch, joints_3d_gt_batch, joints_3d_valid_batch, info_batch) in enumerate(dataloader):
-                    if images_batch is None:
-                        continue
-                    
-                    images_batch = images_batch.to(device)
-                    proj_mats_batch = proj_mats_batch.to(device)
-                    joints_3d_gt_batch = joints_3d_gt_batch.to(device)
-                    joints_3d_valid_batch = joints_3d_valid_batch.to(device)
-                    batch_size = images_batch.shape[0]
-                    joints_3d_pred, joints_2d_pred, heatmaps_pred, confidences_pred = model(images_batch, proj_mats_batch)
-                    metric = KeypointsMSELoss()
-                    error = metric(joints_3d_pred, joints_3d_gt_batch, joints_3d_valid_batch)
-                    total_error += batch_size * error.item()
+        test_acc, test_error = test_one_epoch(model, val_loader, metric, device)
+        
+        writer.add_scalar("test pck (epoch)", test_acc, e)
+        writer.add_scalar("test error (epoch)", test_error, e)
+        
+        print('Epoch: %03d | Train Loss: %.3f | Train Acc: %.3f | Train Error: %.3f | Test Acc: %.3f | Test Error: %.3f' \
+              % (e, train_loss, train_acc, train_error, test_acc, test_error))
 
-                total_error /= total_samples
-                writer.add_scalar("training error", total_error, e)
-                print('Epoch: %03d | Train Loss: %.3f | Train Error: %.2f' % (e, total_loss, total_error))
-
-                # save weights
-                checkpoint_dir_e = os.path.join(checkpoint_dir, "%04d" % e)
-                os.makedirs(checkpoint_dir_e, exist_ok=True)
-                torch.save(model.state_dict(), os.path.join(checkpoint_dir_e, "weights.pth"))
+        # save weights
+        with torch.no_grad():
+            checkpoint_dir_e = os.path.join(checkpoint_dir, "%04d" % e)
+            os.makedirs(checkpoint_dir_e, exist_ok=True)
+            torch.save(model.state_dict(), os.path.join(checkpoint_dir_e, "weights.pth"))
 
     # save weights
     # torch.save(model.state_dict(), os.path.join(checkpoint_dir, "weights.pth"))
-    # print("Training Done.")
+    print("Training Done.")
 
 
 if __name__ == "__main__":
@@ -203,27 +209,43 @@ if __name__ == "__main__":
     device = torch.device(int(config.gpu_id))
     print(device)
 
-    model = AlgebraicTriangulationNet(config, device=device).to(device)
+    model = AlgebraicTriangulationNet(config, device=device)
+
+    model = torch.nn.DataParallel(model).to(device)
 
     if config.model.init_weights:
         model = load_pretrained_model(model, config)
 
+    # load data
     print("Loading data..")
-    dataset = MultiView_SynData(config.dataset.data_root, load_joints=config.model.backbone.num_joints, invalid_joints=None, \
-                                bbox=config.dataset.bbox, image_shape=config.dataset.image_shape)
-    dataloader = datasets_utils.syndata_loader(dataset, \
-                                               batch_size=config.dataset.train.batch_size, \
-                                               shuffle=config.dataset.train.shuffle, \
-                                               num_workers=config.dataset.train.num_workers)
+    train_set = MultiView_SynData(config.dataset.data_root, load_joints=config.model.backbone.num_joints, invalid_joints=(), \
+                                  bbox=config.dataset.bbox, image_shape=config.dataset.image_shape, \
+                                  train=True)
+    train_loader = datasets_utils.syndata_loader(train_set, \
+                                                 batch_size=config.dataset.train.batch_size, \
+                                                 shuffle=config.dataset.train.shuffle, \
+                                                 num_workers=config.dataset.train.num_workers)
+
+    val_set = MultiView_SynData(config.dataset.data_root, load_joints=config.model.backbone.num_joints, invalid_joints=(), \
+                                bbox=config.dataset.bbox, image_shape=config.dataset.image_shape, \
+                                test=True)
+    val_loader = datasets_utils.syndata_loader(val_set, \
+                                               batch_size=config.dataset.test.batch_size, \
+                                               shuffle=config.dataset.test.shuffle, \
+                                               num_workers=config.dataset.test.num_workers)
 
     # configure loss
     if config.opt.criterion == "MSESmooth":
         criterion = KeypointsMSESmoothLoss(config.opt.mse_smooth_threshold)
-    else:
+    elif config.opt.criterion == "MSE":
         criterion = KeypointsMSELoss()
+    elif config.opt.criterion == "MAE":
+        criterion = KeypointsMAELoss()
+    elif config.opt.criterion == "Heatmap":
+        criterion = HeatmapMSELoss(config.dataset.image_shape)
 
     # configure optimizer
     opt = torch.optim.Adam(filter(lambda p : p.requires_grad, model.parameters()), lr=config.opt.lr)
 
-    multiview_train(model, dataloader, criterion, opt, config.opt.n_epochs, device, \
+    multiview_train(config, model, train_loader, val_loader, criterion, opt, config.opt.n_epochs, device, \
                     resume=args.resume, logdir=args.logdir)

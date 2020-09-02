@@ -3,29 +3,51 @@ import numpy as np
 import torch
 from torch import nn
 
+import utils.visualize as visualize
+from utils.op import render_points_as_2d_gaussians
+
 
 class HeatmapMSELoss(nn.Module):
     def __init__(self, image_shape):
         super(HeatmapMSELoss, self).__init__()
         self.criterion = nn.MSELoss(reduction='mean')
-        self.image_shape = image_shape
+        self.image_shape = image_shape # [w, h]
 
     def forward(self, heatmaps_pred, proj_mats_batch, joints_3d_gt_batch, joints_3d_valid_batch):
         batch_size = heatmaps_pred.shape[0]
         num_views = heatmaps_pred.shape[1]
-        num_joints = heatmaps_pred.shape[2]
-        heatmap_shape = tuple(heatmaps_pred.shape[3:])
+        heatmap_shape = tuple(heatmaps_pred.shape[3:]) # [h, w]
+        ratio_w = heatmap_shape[1] / self.image_shape[0] /
+        ratio_h = heatmap_shape[0] / self.image_shape[1]
         heatmaps_gt = torch.zeros_like(heatmaps_pred)
-        proj_mats_batch = proj_mats_batch.view(-1, 3, 4)
+        joints_2d_gt_batch = visualize.proj_to_2D_batch(proj_mats_batch, joints_3d_gt_batch)
+        joints_2d_gt_batch_scaled = torch.zeros_like(joints_2d_gt_batch)
+        joints_2d_gt_batch_scaled[:, :, :, 0] = joints_2d_gt_batch[:, :, :, 0] * ratio_w
+        joints_2d_gt_batch_scaled[:, :, :, 1] = joints_2d_gt_batch[:, :, :, 1] * ratio_h
         for batch_idx in range(batch_size):
-            joints_3d_gt = joints_3d_gt_batch[batch_idx, ...]
             for view_idx in range(num_views):
-                proj_mat = proj_mats_batch[batch_idx, view_idx, ...]
-                joints_2d_gt = visualize.proj_to_2D(proj_mat, joints_3d_gt.T)
-                joints_2d_gt = joints_2d_gt.T
-                heatmaps_gt[batch_idx, view_idx, ...] = render_points_as_2d_gaussians(joints_2d_gt, 1, heatmap_shape)
+                joints_2d_gt_scaled = joints_2d_gt_batch_scaled[batch_idx, view_idx, ...]
+                sigmas = torch.ones_like(joints_2d_gt_scaled) # unit str
+                heatmaps_gt[batch_idx, view_idx, ...] = render_points_as_2d_gaussians(joints_2d_gt_scaled, sigmas, heatmap_shape)
         loss = self.criterion(heatmaps_pred, heatmaps_gt)
         return loss
+
+
+class PCK(nn.Module):
+    def __init__(self, thresh=0.2):
+        self.thresh = thresh
+
+    def forward(self, joints_2d_pred, proj_mats_batch, joints_3d_gt_batch, joints_3d_valid_batch):
+        joints_2d_gt_batch = visualize.proj_to_2D_batch(proj_mats_batch, joints_3d_gt_batch)
+        bbox_w = joints_2d_gt_batch[..., 0].max(-1, keepdim=True)[0] - joints_2d_gt_batch[..., 0].min(-1, keepdim=True)[0] # batch_size x num_views x 1
+        bbox_h = joints_2d_gt_batch[..., 1].max(-1, keepdim=True)[0] - joints_2d_gt_batch[..., 1].min(-1, keepdim=True)[0] # batch_size x num_views x 1
+        torso_diam = torch.max(bbox_w, bbox_h) # batch_size x num_views x 1
+        diff = joints_2d_pred - joints_2d_gt_batch
+        dist = torch.norm(diff, dim=-1) # batch_size x num_views x num_joints
+        detected = (dist < self.thresh * torso_diam).sum()
+        total_joints = torch.count_nonzero(joints_3d_valid_batch)
+        return detected, total_joints
+
 
 class KeypointsMSELoss(nn.Module):
     def __init__(self):
