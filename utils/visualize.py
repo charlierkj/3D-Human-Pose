@@ -262,7 +262,9 @@ def visualize_pred(images, proj_mats, joints_3d_gt, joints_3d_pred, joints_2d_pr
     return fig_np
 
 def draw_one_scene(joints_3d_pred_path, joints_2d_pred_path, scene_folder, save_folder, \
-                   cams_idx=list(range(4)), bbox=[160, 0, 1120, 960], show_img=False):
+                   cams_idx=list(range(4)), \
+                   bbox=[160, 0, 1120, 960], image_shape=[384, 384], \
+                   show_img=False):
     os.makedirs(save_folder, exist_ok=True)
     joints_3d_pred = np.load(joints_3d_pred_path)
     joints_2d_pred = np.load(joints_2d_pred_path)
@@ -277,13 +279,14 @@ def draw_one_scene(joints_3d_pred_path, joints_2d_pred_path, scene_folder, save_
             
             # load image
             image_path = os.path.join(scene_folder, camera_name, '%06d.jpg' % frame_idx)
-            image_tensor = datasets_utils.load_image(image_path, bbox)
+            image_tensor = datasets_utils.load_image(image_path, bbox, image_shape)
             images.append(image_tensor)
 
             # load camera
             camera_file = os.path.join(scene_folder, 'camera_%s.json' % camera_name)
             cam = datasets_utils.load_camera(camera_file)
             cam.update_after_crop(bbox)
+            cam.update_after_resize(image_shape)
             proj_mat = cam.get_P() # 3 x 4
             proj_mats.append(proj_mat)
 
