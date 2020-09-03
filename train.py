@@ -79,13 +79,11 @@ def train_one_epoch(model, train_loader, criterion, metric, opt, e, device, \
     batch_size = train_loader.batch_size
     iters_per_epoch = round(train_loader.dataset.__len__() / batch_size)
     print("Estimated iterations per epoch is %d." % iters_per_epoch)
+    
     total_train_loss = 0
-    total_samples = 0
-
-    sum_loss_per_log = 0
-    sum_detected_per_log = 0
-    sum_error_per_log = 0
-    sum_samples_per_log = 0 # num_joints or num_frames
+    total_detected = 0
+    total_error = 0
+    total_samples = 0 # num_joints or num_frames
 
     for iter_idx, (images_batch, proj_mats_batch, joints_3d_gt_batch, joints_3d_valid_batch, info_batch) in enumerate(train_loader):
         if images_batch is None:
@@ -117,47 +115,35 @@ def train_one_epoch(model, train_loader, criterion, metric, opt, e, device, \
         opt.step()
 
         # evaluate batch
-        with torch.no_grad():
-            detected, error, num_samples = utils_eval.eval_one_batch(metric, joints_3d_pred, joints_2d_pred, \
-                                                                     proj_mats_batch, joints_3d_gt_batch, joints_3d_valid_batch)
-            sum_samples_per_log += num_samples
-            sum_loss_per_log += num_samples * loss.item()
-            sum_detected_per_log += detected
-            sum_error_per_log += num_samples * error
+        detected, error, num_samples = utils_eval.eval_one_batch(metric, joints_3d_pred, joints_2d_pred, \
+                                                                 proj_mats_batch, joints_3d_gt_batch, joints_3d_valid_batch)
 
-            total_train_loss += num_samples * loss.item()
-            total_samples += num_samples
+        total_train_loss += num_samples * loss.item()
+        total_detected += detected
+        total_error += num_samples * error
+        total_samples += num_samples
             
         if iter_idx % log_every_iters == log_every_iters - 1:
             logging_iter = iter_idx + 1 - log_every_iters
-            mean_loss_per_log = sum_loss_per_log / sum_samples_per_log
-            pck_acc_per_log = sum_detected_per_log.type(torch.float32) / sum_samples_per_log.type(torch.float32)
-            mean_error_per_log = sum_error_per_log / sum_samples_per_log
+            mean_loss_logging = total_train_loss / total_samples
+            pck_acc_logging = total_detected.type(torch.float32) / total_samples.type(torch.float32)
+            mean_error_logging = total_error / total_samples
             print("epoch: %d, iter: %d, train loss: %f, train acc: %.3f, train error: %.3f" \
-                  % (e, logging_iter, mean_loss_per_log, pck_acc_per_log, mean_error_per_log))
+                  % (e, logging_iter, mean_loss_logging, pck_acc_logging, mean_error_logging))
 
             if writer is not None:
-                writer.add_scalar("train_loss/iter", mean_loss_per_log, e * iters_per_epoch + logging_iter)
-                writer.add_scalar("train_pck/iter", pck_acc_per_log, e * iters_per_epoch + logging_iter)
-                writer.add_scalar("train_error/iter", mean_error_per_log, e * iters_per_epoch + logging_iter)
+                writer.add_scalar("train_loss/iter", mean_loss_logging, e * iters_per_epoch + logging_iter)
+                writer.add_scalar("train_pck/iter", pck_acc_logging, e * iters_per_epoch + logging_iter)
+                writer.add_scalar("train_error/iter", mean_error_logging, e * iters_per_epoch + logging_iter)
 
-            sum_samples_per_log = 0
-            sum_loss_per_log = 0
-            sum_detected_per_log = 0
-            sum_error_per_log = 0
-
-    # save training loss per epoch to tensorboard
+    # save logging per epoch to tensorboard
     mean_loss = total_train_loss / total_samples
+    pck_acc = total_detected.type(torch.float32) / total_samples.type(torch.float32)
+    mean_error = total_error / total_samples
     if writer is not None:
         writer.add_scalar("train_loss/epoch",  mean_loss, e)
-
-    # evaluate using training set
-    with torch.no_grad():
-        model.eval()
-        pck_acc, mean_error = test.test_one_epoch(model, train_loader, metric, device)
-        if writer is not None:
-            writer.add_scalar("train_pck/epoch", pck_acc, e)
-            writer.add_scalar("train_error/epoch", mean_error, e)
+        writer.add_scalar("train_pck/epoch", pck_acc, e)
+        writer.add_scalar("train_error/epoch", mean_error, e)
         
     return mean_loss, pck_acc, mean_error
     

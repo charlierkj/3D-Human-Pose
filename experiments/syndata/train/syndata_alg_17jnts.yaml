@@ -2,7 +2,7 @@ title: "human36m_alg"
 kind: "human36m"
 vis_freq: 20
 vis_n_elements: 10
-gpu_id: 3
+gpu_id: 2
 
 opt:
   criterion: "Heatmap"
