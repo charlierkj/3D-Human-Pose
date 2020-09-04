@@ -39,7 +39,7 @@ def evaluate_one_batch(joints_3d_pred, joints_3d_gt_batch, joints_3d_valid_batch
 def eval_one_batch(metric, joints_3d_pred, joints_2d_pred, \
                    proj_mats_batch, joints_3d_gt_batch, joints_3d_valid_batch):
     error = 0
-    detected = 0
+    detected = torch.tensor(0, dtype=torch.float32)
     if isinstance(metric, PCK):
         detected, num_samples = metric(joints_2d_pred, proj_mats_batch, \
                                        joints_3d_gt_batch, joints_3d_valid_batch)

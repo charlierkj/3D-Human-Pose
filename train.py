@@ -126,7 +126,7 @@ def train_one_epoch(model, train_loader, criterion, metric, opt, e, device, \
         if iter_idx % log_every_iters == log_every_iters - 1:
             logging_iter = iter_idx + 1 - log_every_iters
             mean_loss_logging = total_train_loss / total_samples
-            pck_acc_logging = total_detected.type(torch.float32) / total_samples.type(torch.float32)
+            pck_acc_logging = total_detected / total_samples
             mean_error_logging = total_error / total_samples
             print("epoch: %d, iter: %d, train loss: %f, train acc: %.3f, train error: %.3f" \
                   % (e, logging_iter, mean_loss_logging, pck_acc_logging, mean_error_logging))

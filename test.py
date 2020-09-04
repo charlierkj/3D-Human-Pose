@@ -47,7 +47,7 @@ def test_one_epoch(model, val_loader, metric, device):
             total_error += num_samples * error
             total_samples += num_samples
 
-        pck_acc = total_detected.type(torch.float32) / total_samples.type(torch.float32) # 2D
+        pck_acc = total_detected / total_samples # 2D
         mean_error = total_error / total_samples # 3D
 
     return pck_acc, mean_error
