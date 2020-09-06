@@ -74,7 +74,8 @@ def load_pretrained_model(model, config, init_joints=17):
 
 
 def train_one_epoch(model, train_loader, criterion, metric, opt, e, device, \
-                    checkpoint_dir, writer=None, log_every_iters=1):
+                    checkpoint_dir, writer=None, \
+                    log_every_iters=1, vis_every_iters=1):
     model.train()
     batch_size = train_loader.batch_size
     iters_per_epoch = round(train_loader.dataset.__len__() / batch_size)
@@ -136,6 +137,20 @@ def train_one_epoch(model, train_loader, criterion, metric, opt, e, device, \
                 writer.add_scalar("train_pck/iter", pck_acc_logging, e * iters_per_epoch + logging_iter)
                 writer.add_scalar("train_error/iter", mean_error_logging, e * iters_per_epoch + logging_iter)
 
+        # save images
+        if iter_idx % vis_every_iters == 0:
+            vis_iter = iter_idx
+            # visualize first sample in batch
+            if writer is not None:
+                joints_vis = visualize.visualize_pred(images_batch[0], proj_mats_batch[0], joints_3d_gt_batch[0], \
+                                                      joints_3d_pred[0], joints_2d_pred[0])
+                writer.add_image("joints/iter", joints_vis.transpose(2, 0, 1), global_step=e*iters_per_epoch+vis_iter)
+
+                vis_joint = (iter_idx // vis_every_iters) % 17
+                heatmap_vis = visualize.visualize_heatmap(images_batch[0], proj_mats_batch[0], joints_3d_gt_batch[0], \
+                                                          heatmaps_pred[0], vis_joint=vis_joint)
+                writer.add_image("heatmap/%d/iter" % vis_joint, heatmap_vis.transpose(2, 0, 1), global_step=e*iters_per_epoch+vis_iter)
+
     # save logging per epoch to tensorboard
     mean_loss = total_train_loss / total_samples
     pck_acc = total_detected.type(torch.float32) / total_samples.type(torch.float32)
@@ -149,7 +164,7 @@ def train_one_epoch(model, train_loader, criterion, metric, opt, e, device, \
     
 
 def multiview_train(config, model, train_loader, val_loader, criterion, opt, epochs, device, \
-                    log_every_iters=20, \
+                    log_every_iters=20, vis_every_iters=20, \
                     resume=False, logdir="./logs", exp_log="exp_27jnts@15.08.2020-05.15.16"):
     # configure dir and writer for saving weights and intermediate evaluation
     if not resume:
@@ -189,7 +204,7 @@ def multiview_train(config, model, train_loader, val_loader, criterion, opt, epo
     for e in range(start_epoch, epochs):
         # train for one epoch
         train_loss, train_acc, train_error = train_one_epoch(model, train_loader, criterion, metric, opt, e, device, \
-                                                             checkpoint_dir, writer, log_every_iters)
+                                                             checkpoint_dir, writer, log_every_iters, vis_every_iters)
 
         # evaluate
         test_acc, test_error = test.test_one_epoch(model, val_loader, metric, device)

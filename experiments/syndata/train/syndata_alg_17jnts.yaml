@@ -5,7 +5,7 @@ vis_n_elements: 10
 gpu_id: 3
 
 opt:
-  criterion: "MSESmooth"
+  criterion: "Heatmap"
   mse_smooth_threshold: 400
 
   n_objects_per_epoch: 15000

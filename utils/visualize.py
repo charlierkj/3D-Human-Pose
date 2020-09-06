@@ -11,6 +11,7 @@ from PIL import Image
 
 import datasets.utils as datasets_utils
 from utils.ue import *
+from utils.op import render_points_as_2d_gaussians
 
 IMAGENET_MEAN = np.array([0.485, 0.456, 0.406])
 IMAGENET_STD = np.array([0.229, 0.224, 0.225])
@@ -260,6 +261,54 @@ def visualize_pred(images, proj_mats, joints_3d_gt, joints_3d_pred, joints_2d_pr
     fig_np = np.array(fig.canvas.renderer._renderer)
     plt.close('all')
     return fig_np
+
+def visualize_heatmap(images, proj_mats, joints_3d_gt, heatmaps_pred, vis_joint=0, size=5):
+    """visualize heatmap prediction for single data sample."""
+    num_views = images.shape[0]
+    num_jnts = joints_3d_gt.shape[0]
+    image_shape = images.shape[2:] # [h, w]
+    heatmap_shape = heatmaps_pred[2:] # [h, w]
+    fig, axes = plt.subplots(nrows=2, ncols=num_views, figsize=(num_views * size, 2 * size))
+    axes = axes.reshape(2, num_views)
+
+    # plot images
+    if torch.is_tensor(images):
+        images = images.cpu().numpy()
+    images = np.moveaxis(images, 1, -1) # num_views x C x H x W -> num_views x H x W x C
+    images = images[..., (2, 1, 0)] # BGR -> RGB
+    images = np.clip(255 * (images * IMAGENET_STD + IMAGENET_MEAN), 0, 255).astype(np.uint8) # denormalize
+
+    for view_idx in range(num_views):
+        image_resized = cv2.resize(images[view_idx, ::], (heatmap_shape[1], heatmap_shape[0]))
+        axes[0, view_idx].imshow(image_resized)
+        axes[1, view_idx].imshow(image_resized)
+        axes[1, view_idx].set_xlabel('view_%d' % (view_idx + 1), size='large')
+
+    # plot groundtruth heatmap
+    axes[0, 0].set_ylabel('groundtruth', size='large')
+    ratio_w = heatmap_shape[1] / self.image_shape[1]
+    ratio_h = heatmap_shape[0] / self.image_shape[0]
+    heatmaps_gt = torch.zeros_like(heatmaps_pred)
+    for view_idx in range(num_views):
+        joints_2d_gt = proj_to_2D(proj_mats[view_idx, ::], joints_3d_gt.T)
+        joints_2d_gt = joints_2d_gt.T
+        joints_2d_gt_scaled[:, 0] = joints_2d_gt[:, 0] * ratio_w
+        joints_2d_gt_scaled[:, 1] = joints_2d_gt[:, 1] * ratio_h
+        sigmas = torch.ones_like(joints_2d_gt_scaled) # unit str
+        heatmaps_gt[view_idx, ...] = render_points_as_2d_gaussians(joints_2d_gt_scaled, sigmas, heatmap_shape)
+        axes[0, view_idx].imshow(heatmaps_gt[view_idx, vis_joint, :, :], alpha=0.5)
+
+    # plot predicted heatmap
+    axes[1, 0].set_ylabel('prediction', size='large')
+    for view_idx in range(num_views):
+        axes[1, view_idx].imshow(heatmaps_pred[view_idx, vis_joint, :, :], alpha=0.5)
+
+    fig.tight_layout()
+    fig.canvas.draw()
+    fig_np = np.array(fig.canvas.renderer._renderer)
+    plt.close('all')
+    return fig_np
+    
 
 def draw_one_scene(joints_3d_pred_path, joints_2d_pred_path, scene_folder, save_folder, \
                    cams_idx=list(range(4)), \
