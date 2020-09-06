@@ -122,7 +122,7 @@ def train_one_epoch(model, train_loader, criterion, metric, opt, e, device, \
         total_detected += detected
         total_error += num_samples * error
         total_samples += num_samples
-            
+    
         if iter_idx % log_every_iters == log_every_iters - 1:
             logging_iter = iter_idx + 1 - log_every_iters
             mean_loss_logging = total_train_loss / total_samples
