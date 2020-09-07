@@ -122,8 +122,8 @@ def syndata_test(model, dataloader, device, save_folder, show_img=False, make_gi
             # evaluate
             joints_3d_pred_path = os.path.join(save_folder, 'preds', subj_name, anim_name, 'joints_3d.npy')
             joints_2d_pred_path = os.path.join(save_folder, 'preds', subj_name, anim_name, 'joints_2d.npy')
-            error_per_scene = evaluate_one_scene(joints_3d_pred_path, scene_folder, invalid_joints=(9, 16))
-            metrics_subj[anim_name] = error_per_scene
+            # error_per_scene = evaluate_one_scene(joints_3d_pred_path, scene_folder, invalid_joints=(9, 16))
+            # metrics_subj[anim_name] = error_per_scene
 
             # save images
             print('saving result images...')
@@ -222,9 +222,10 @@ if __name__ == "__main__":
     
     print("Loading data..")
 
-    if args.data == "syndata":
-        dataset = MultiView_SynData(config.dataset.data_root, load_joints=config.model.backbone.num_joints, invalid_joints=(9, 16), \
-                                    bbox=config.dataset.bbox, image_shape=config.dataset.image_shape)
+    if config.dataset.type == "syndata":
+        dataset = MultiView_SynData(config.dataset.data_root, load_joints=config.model.backbone.num_joints, invalid_joints=(), \
+                                    bbox=config.dataset.bbox, image_shape=config.dataset.image_shape, \
+                                    test=True)
         dataloader = datasets_utils.syndata_loader(dataset, \
                                                    batch_size=config.dataset.test.batch_size, \
                                                    shuffle=config.dataset.test.shuffle, \
@@ -234,7 +235,7 @@ if __name__ == "__main__":
         #save_folder = os.path.join(os.getcwd(), 'results/mocap_syndata')
         syndata_test(model, dataloader, device, save_folder, make_vid=False)
 
-    elif args.data == "human36m":
+    elif config.dataset.type == "human36m":
         dataset = Human36MMultiViewDataset(
                     h36m_root=config.dataset.data_root,
                     test=True,

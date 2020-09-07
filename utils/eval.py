@@ -1,6 +1,7 @@
 import numpy as np
 import torch
 
+import datasets.utils as datasets_utils
 from models.loss import PCK, KeypointsL2Loss
 
 def evaluate_one_scene(joints_3d_pred_path, scene_folder, invalid_joints=(9, 16), path=True):
