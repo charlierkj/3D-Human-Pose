@@ -145,11 +145,11 @@ def train_one_epoch(model, train_loader, criterion, metric, opt, e, device, \
                 joints_vis = visualize.visualize_pred(images_batch[0], proj_mats_batch[0], joints_3d_gt_batch[0], \
                                                       joints_3d_pred[0], joints_2d_pred[0])
                 writer.add_image("joints/iter", joints_vis.transpose(2, 0, 1), global_step=e*iters_per_epoch+vis_iter)
-
+        
                 vis_joint = (iter_idx // vis_every_iters) % 17
                 heatmap_vis = visualize.visualize_heatmap(images_batch[0], proj_mats_batch[0], joints_3d_gt_batch[0], \
                                                           heatmaps_pred[0], vis_joint=vis_joint)
-                writer.add_image("heatmap/%d/iter" % vis_joint, heatmap_vis.transpose(2, 0, 1), global_step=e*iters_per_epoch+vis_iter)
+                writer.add_image("heatmap/joint_%d/iter" % vis_joint, heatmap_vis.transpose(2, 0, 1), global_step=e*iters_per_epoch+vis_iter)
 
     # save logging per epoch to tensorboard
     mean_loss = total_train_loss / total_samples
@@ -164,7 +164,7 @@ def train_one_epoch(model, train_loader, criterion, metric, opt, e, device, \
     
 
 def multiview_train(config, model, train_loader, val_loader, criterion, opt, epochs, device, \
-                    log_every_iters=20, vis_every_iters=20, \
+                    log_every_iters=20, vis_every_iters=500, \
                     resume=False, logdir="./logs", exp_log="exp_27jnts@15.08.2020-05.15.16"):
     # configure dir and writer for saving weights and intermediate evaluation
     if not resume:

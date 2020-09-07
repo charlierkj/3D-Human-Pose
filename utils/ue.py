@@ -9,6 +9,7 @@ class Camera_UE(object):
         # self.o = [w/2, h/2] # principle point in pixel
         self.w, self.h = w, h # original image size
         self.w_c, self.h_c = w, h # current image size
+        self.ratio_w, self.ratio_h = 1, 1 # ratio after resize
 
     def set_K(self, w, h, fov):
         """get 3x3 intrinsic matrix."""
@@ -71,6 +72,8 @@ class Camera_UE(object):
 
     def update_after_crop(self, bbox):
         upper_left_x, upper_left_y, lower_right_x, lower_right_y = bbox
+        self.K[0, 0] /= self.ratio_w # reset fx, fy by ratio
+        self.K[1, 1] /= self.ratio_h
         new_ox = self.w / 2 - upper_left_x
         new_oy = self.h / 2 - upper_left_y
         self.K[0, 2] = new_ox
@@ -80,11 +83,13 @@ class Camera_UE(object):
 
     def update_after_resize(self, image_size):
         new_w, new_h = image_size
+        self.ratio_w = new_w / self.w_c
+        self.ratio_h = new_h / self.h_c
         fx, fy, ox, oy = self.K[0, 0], self.K[1, 1], self.K[0, 2], self.K[1, 2]
-        new_fx = fx * (new_w / self.w_c)
-        new_fy = fy * (new_h / self.h_c)
-        new_ox = ox * (new_w / self.w_c)
-        new_oy = oy * (new_h / self.h_c)
+        new_fx = fx * self.ratio_w
+        new_fy = fy * self.ratio_h
+        new_ox = ox * self.ratio_w
+        new_oy = oy * self.ratio_h
         self.K[0, 0], self.K[1, 1], self.K[0, 2], self.K[1, 2] = new_fx, new_fy, new_ox, new_oy
         self.w_c = new_w
         self.h_c = new_h

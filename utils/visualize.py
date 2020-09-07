@@ -267,7 +267,7 @@ def visualize_heatmap(images, proj_mats, joints_3d_gt, heatmaps_pred, vis_joint=
     num_views = images.shape[0]
     num_jnts = joints_3d_gt.shape[0]
     image_shape = images.shape[2:] # [h, w]
-    heatmap_shape = heatmaps_pred[2:] # [h, w]
+    heatmap_shape = heatmaps_pred.shape[2:] # [h, w]
     fig, axes = plt.subplots(nrows=2, ncols=num_views, figsize=(num_views * size, 2 * size))
     axes = axes.reshape(2, num_views)
 
@@ -286,22 +286,25 @@ def visualize_heatmap(images, proj_mats, joints_3d_gt, heatmaps_pred, vis_joint=
 
     # plot groundtruth heatmap
     axes[0, 0].set_ylabel('groundtruth', size='large')
-    ratio_w = heatmap_shape[1] / self.image_shape[1]
-    ratio_h = heatmap_shape[0] / self.image_shape[0]
+    ratio_w = heatmap_shape[1] / image_shape[1]
+    ratio_h = heatmap_shape[0] / image_shape[0]
     heatmaps_gt = torch.zeros_like(heatmaps_pred)
     for view_idx in range(num_views):
         joints_2d_gt = proj_to_2D(proj_mats[view_idx, ::], joints_3d_gt.T)
         joints_2d_gt = joints_2d_gt.T
+        joints_2d_gt_scaled = torch.zeros_like(joints_2d_gt)
         joints_2d_gt_scaled[:, 0] = joints_2d_gt[:, 0] * ratio_w
         joints_2d_gt_scaled[:, 1] = joints_2d_gt[:, 1] * ratio_h
         sigmas = torch.ones_like(joints_2d_gt_scaled) # unit str
         heatmaps_gt[view_idx, ...] = render_points_as_2d_gaussians(joints_2d_gt_scaled, sigmas, heatmap_shape)
-        axes[0, view_idx].imshow(heatmaps_gt[view_idx, vis_joint, :, :], alpha=0.5)
+        heatmap_gt_vis = heatmaps_gt[view_idx, vis_joint, :, :].detach().cpu().numpy()
+        axes[0, view_idx].imshow(heatmap_gt_vis, alpha=0.5)
 
     # plot predicted heatmap
     axes[1, 0].set_ylabel('prediction', size='large')
     for view_idx in range(num_views):
-        axes[1, view_idx].imshow(heatmaps_pred[view_idx, vis_joint, :, :], alpha=0.5)
+        heatmap_pred_vis = heatmaps_pred[view_idx, vis_joint, :, :].detach().cpu().numpy()
+        axes[1, view_idx].imshow(heatmap_pred_vis, alpha=0.5)
 
     fig.tight_layout()
     fig.canvas.draw()

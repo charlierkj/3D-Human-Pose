@@ -47,7 +47,7 @@ class PCK(nn.Module):
         # print(torso_diam)
         diff = joints_2d_pred - joints_2d_gt_batch
         dist = torch.norm(diff, dim=-1) # batch_size x num_views x num_joints
-        detected = (dist < self.thresh * torso_diam).sum()
+        detected = (dist < self.thresh * torso_diam).sum(dtype=torch.float32)
         total_joints = num_views * (joints_3d_valid_batch == 1).sum()
         return detected, total_joints
 
