@@ -202,7 +202,7 @@ def syndata_test(config, model, dataloader, device, save_folder, \
     pck_acc = float((total_detected_pck / total_joints_2d).detach().cpu())
     pckh_acc = float((total_detected_pckh / total_joints_2d).detach().cpu())
     pck3d_acc = float((total_detected_pck3d / total_joints_3d).detach().cpu())
-    mean_error = float((total_error / total_samples).detach().cpu())
+    mean_error = float(total_error / total_samples)
 
     print("PCK:", pck_acc)
     print("PCKh:", pckh_acc)
@@ -319,7 +319,7 @@ def human36m_test(config, model, dataloader, device, save_folder, \
     pck_acc = float((total_detected_pck / total_joints_2d).detach().cpu())
     pckh_acc = float((total_detected_pckh / total_joints_2d).detach().cpu())
     pck3d_acc = float((total_detected_pck3d / total_joints_3d).detach().cpu())
-    mean_error = float((total_error / total_samples).detach().cpu())
+    mean_error = float(total_error / total_samples)
 
     print("PCK:", pck_acc)
     print("PCKh:", pckh_acc)

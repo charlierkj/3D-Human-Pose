@@ -23,7 +23,7 @@ model:
   checkpoint: "./logs/exp_17jnts@07.09.2020-06.28.39/checkpoint/0009/weights.pth"
 
   use_confidences: true
-  heatmap_multiplier: 1
+  heatmap_multiplier: 100.0
   heatmap_softmax: true
 
   backbone:
