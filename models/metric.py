@@ -36,7 +36,7 @@ class PCKh(nn.Module):
     default: PCKh@0.5
     """
     def __init__(self, thresh=0.5):
-        super(PCK, self).__init__()
+        super(PCKh, self).__init__()
         self.thresh = thresh
 
     def forward(self, joints_2d_pred, proj_mats_batch, joints_3d_gt_batch, joints_3d_valid_batch):
@@ -56,7 +56,7 @@ class PCK3D(nn.Module):
     default threshold: 150mm
     """
     def __init__(self, thresh=150):
-        super(PCK, self).__init__()
+        super(PCK3D, self).__init__()
         self.thresh = thresh
 
     def forward(self, joints_3d_pred, joints_3d_gt_batch, joints_3d_valid_batch):
