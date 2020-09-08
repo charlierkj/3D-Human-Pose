@@ -8,11 +8,13 @@ import torch
 torch.backends.cudnn.benchmark = True
 
 from PIL import Image
+import yaml
 
 from utils import cfg
 from utils.eval import *
 from models.triangulation import AlgebraicTriangulationNet
-from models.loss import PCK, KeypointsL2Loss
+from models.loss import KeypointsL2Loss
+from models.metric import PCK, PCKh, PCK3D
 from datasets.multiview_syndata import MultiView_SynData
 from datasets.human36m import Human36MMultiViewDataset
 import datasets.utils as datasets_utils
@@ -53,21 +55,53 @@ def test_one_epoch(model, val_loader, metric, device):
     return pck_acc, mean_error
 
 
-def syndata_test(model, dataloader, device, save_folder, show_img=False, make_gif=False, make_vid=False):
+def syndata_test(config, model, dataloader, device, save_folder, \
+                 save_img=False, show_img=False, make_gif=False, make_vid=False):
     frames_per_scene = 60
-    
+
+    os.makedirs(save_folder, exist_ok=True)
+
+    # save parameters
+    yaml_path = os.path.join(save_folder, "param.yaml")
+    param_dict = {}
+    param_dict["dataset"] = config.dataset.type
+    param_dict["test_batch_size"] = config.dataset.test.batch_size
+    param_dict["image_shape"] = config.dataset.image_shape
+    param_dict["num_joints"] = config.model.backbone.num_joints
+    if config.model.init_weights:
+        param_dict["checkpoint"] = config.model.checkpoint
+    else:
+        param_dict["checkpoint"] = ""
+    param_dict["use_confidences"] = config.model.use_confidences
+    param_dict["heatmap_multiplier"] = config.model.heatmap_multiplier
+    with open(yaml_path, 'w') as f:
+        data = yaml.dump(param_dict, f)
+
+    # model
     model.to(device)
     model.eval()
+
+    # metrics
+    metric_pck = PCK()
+    metric_pckh = PCKh()
+    metric_pck3d = PCK3D()
+    metric_error = KeypointsL2Loss()
 
     #scene_names = []
     subj_names = []
     anim_names = []
     metrics = {}
     with torch.no_grad():
+        total_samples = 0
+        total_joints_3d = 0
+        total_joints_2d = 0
+        total_detected_pck = 0
+        total_detected_pckh = 0
+        total_detected_pck3d = 0
+        total_error = 0
+        
         for iter_idx, (images_batch, proj_mats_batch, joints_3d_gt_batch, joints_3d_valid_batch, info_batch) in enumerate(dataloader):
-            print(iter_idx)
-            if iter_idx >= 30:
-                break
+            # print(iter_idx)
 
             if images_batch is None:
                 continue
@@ -81,6 +115,24 @@ def syndata_test(model, dataloader, device, save_folder, show_img=False, make_gi
             
             joints_3d_pred, joints_2d_pred, heatmaps_pred, confidences_pred = model(images_batch, proj_mats_batch)
 
+            # evaluate
+            detected_pck, num_joints_2d = metric_pck(joints_2d_pred, proj_mats_batch, \
+                                                     joints_3d_gt_batch, joints_3d_valid_batch)
+            detected_pckh, _ = metric_pckh(joints_2d_pred, proj_mats_batch, \
+                                           joints_3d_gt_batch, joints_3d_valid_batch)
+            detected_pck3d, num_joints_3d = metric_pck3d(joints_3d_pred, \
+                                                         joints_3d_gt_batch, joints_3d_valid_batch)
+            error = metric_error(joints_3d_pred, joints_3d_gt_batch, joints_3d_valid_batch).item()
+            
+            total_samples += batch_size
+            total_joints_3d += num_joints_3d
+            total_joints_2d += num_joints_2d
+            total_detected_pck += detected_pck
+            total_detected_pckh += detected_pckh
+            total_detected_pck3d += detected_pck3d
+            total_error += error * batch_size
+
+            # save predictions
             [subj_name, anim_idx, frame] = info_batch[0]
             if frame == 0:
                 anim_name = 'anim_%03d' % anim_idx
@@ -111,6 +163,7 @@ def syndata_test(model, dataloader, device, save_folder, show_img=False, make_gi
                 #np.save(os.path.join(preds_folder, 'heatmaps.npy'), heatmaps_pred_np) # numpy array of size (num_frames, num_views, num_joints, 120, 120)
                 np.save(os.path.join(preds_folder, 'confidences.npy'), confidences_pred_np) # numpy array of size (num_frames, num_views, num_joints)
 
+    """
     # save evaluations and visualizations
     for subj_name in subj_names:
         metrics_subj = {}
@@ -126,9 +179,10 @@ def syndata_test(model, dataloader, device, save_folder, show_img=False, make_gi
             # metrics_subj[anim_name] = error_per_scene
 
             # save images
-            print('saving result images...')
-            imgs_folder = os.path.join(save_folder, 'imgs', subj_name, anim_name)
-            visualize.draw_one_scene(joints_3d_pred_path, joints_2d_pred_path, scene_folder, imgs_folder, show_img=show_img)
+            if save_img:
+                print('saving result images...')
+                imgs_folder = os.path.join(save_folder, 'imgs', subj_name, anim_name)
+                visualize.draw_one_scene(joints_3d_pred_path, joints_2d_pred_path, scene_folder, imgs_folder, show_img=show_img)
 
             # save gifs/videos (optioanl)
             if make_gif:
@@ -142,28 +196,75 @@ def syndata_test(model, dataloader, device, save_folder, show_img=False, make_gi
                 visualize.make_vid(imgs_folder, vid_name)
 
         metrics[subj_name] = metrics_subj
+    """
             
-    # save evaluation
-    print('saving evaluation results...')
+    # save evaluations
+    print("PCK:", total_detected_pck / total_joints_2d)
+    print("PCKh:", total_detected_pckh / total_joints_2d)
+    print("PCK3D:", total_detected_pck3d / total_joints_3d)
+    print("Error:", total_error / total_samples)
+
+    metrics["PCK@%.1f" % metric_pck.thresh] = total_detected_pck / total_joints_2d
+    metrics["PCKh@%.1f" % metric_pckh.thresh] = total_detected_pckh / total_joints_2d
+    metrics["PCK3D@%d" % metric_pck3d.thresh] = total_detected_pck3d / total_joints_3d
+    metrics["error"] = total_error / total_samples
+
+    print('saving evaluations...')
     metrics_path = os.path.join(save_folder, 'metrics.json')
     with open(metrics_path, 'w') as metrics_json:
         json.dump(metrics, metrics_json)
+        
+    # print('saving evaluation results...')
+    # metrics_path = os.path.join(save_folder, 'metrics.json')
+    # with open(metrics_path, 'w') as metrics_json:
+    #     json.dump(metrics, metrics_json)
 
 
-def human36m_test(model, dataloader, device, save_folder, show_img=False, make_gif=False, make_vid=False):
-    os.makedirs(save_folder, exist_ok=True)
+def human36m_test(config, model, dataloader, device, save_folder, \
+                  save_img=False, show_img=False, make_gif=False, make_vid=False):
     saveimg_per_iter = 10
-    
+
+    os.makedirs(save_folder, exist_ok=True)
+
+    # save parameters
+    yaml_path = os.path.join(save_folder, "param.yaml")
+    param_dict = {}
+    param_dict["dataset"] = config.dataset.type
+    param_dict["test_batch_size"] = config.dataset.test.batch_size
+    param_dict["image_shape"] = config.dataset.image_shape
+    param_dict["num_joints"] = config.model.backbone.num_joints
+    if config.model.init_weights:
+        param_dict["checkpoint"] = config.model.checkpoint
+    else:
+        param_dict["checkpoint"] = ""
+    param_dict["use_confidences"] = config.model.use_confidences
+    param_dict["heatmap_multiplier"] = config.model.heatmap_multiplier
+    with open(yaml_path, 'w') as f:
+        data = yaml.dump(param_dict, f)
+
+    # model
     model.to(device)
     model.eval()
+
+    # metrics
+    metric_pck = PCK()
+    metric_pckh = PCKh()
+    metric_pck3d = PCK3D()
+    metric_error = KeypointsL2Loss()
 
     preds = defaultdict(list)
 
     with torch.no_grad():
+        total_samples = 0
+        total_joints_3d = 0
+        total_joints_2d = 0
+        total_detected_pck = 0
+        total_detected_pckh = 0
+        total_detected_pck3d = 0
+        total_error = 0
+        
         for iter_idx, (images_batch, proj_mats_batch, joints_3d_gt_batch, joints_3d_valid_batch, indexes) in enumerate(dataloader):
             print(iter_idx)
-            if iter_idx >= 60:
-                break
 
             if images_batch is None:
                 continue
@@ -183,14 +284,50 @@ def human36m_test(model, dataloader, device, save_folder, show_img=False, make_g
             preds["confidences"].append(confidences_pred.detach().cpu().numpy())
 
             # save images
-            imgs_folder = os.path.join(save_folder, "imgs")
-            os.makedirs(imgs_folder, exist_ok=True)
-            if iter_idx % saveimg_per_iter == 0:
-                img = visualize.visualize_pred(images_batch[0], proj_mats_batch[0], joints_3d_gt_batch[0], joints_3d_pred[0], joints_2d_pred[0])
-                im = Image.fromarray(img)
-                img_path = os.path.join(imgs_folder, "%06d.png" % indexes[0])
-                im.save(img_path)
+            if save_img:
+                imgs_folder = os.path.join(save_folder, "imgs")
+                os.makedirs(imgs_folder, exist_ok=True)
+                if iter_idx % saveimg_per_iter == 0:
+                    img = visualize.visualize_pred(images_batch[0], proj_mats_batch[0], joints_3d_gt_batch[0], joints_3d_pred[0], joints_2d_pred[0])
+                    im = Image.fromarray(img)
+                    img_path = os.path.join(imgs_folder, "%06d.png" % indexes[0])
+                    im.save(img_path)
 
+            # evaluate
+            detected_pck, num_joints_2d = metric_pck(joints_2d_pred, proj_mats_batch, \
+                                                     joints_3d_gt_batch, joints_3d_valid_batch)
+            detected_pckh, _ = metric_pckh(joints_2d_pred, proj_mats_batch, \
+                                           joints_3d_gt_batch, joints_3d_valid_batch)
+            detected_pck3d, num_joints_3d = metric_pck3d(joints_3d_pred, \
+                                                         joints_3d_gt_batch, joints_3d_valid_batch)
+            error = metric_error(joints_3d_pred, joints_3d_gt_batch, joints_3d_valid_batch).item()
+            
+            total_samples += batch_size
+            total_joints_3d += num_joints_3d
+            total_joints_2d += num_joints_2d
+            total_detected_pck += detected_pck
+            total_detected_pckh += detected_pckh
+            total_detected_pck3d += detected_pck3d
+            total_error += error * batch_size
+
+    # save evaluation
+    print("PCK:", total_detected_pck / total_joints_2d)
+    print("PCKh:", total_detected_pckh / total_joints_2d)
+    print("PCK3D:", total_detected_pck3d / total_joints_3d)
+    print("Error:", total_error / total_samples)
+
+    metrics = {}
+    metrics["PCK@%.1f" % metric_pck.thresh] = total_detected_pck / total_joints_2d
+    metrics["PCKh@%.1f" % metric_pckh.thresh] = total_detected_pckh / total_joints_2d
+    metrics["PCK3D@%d" % metric_pck3d.thresh] = total_detected_pck3d / total_joints_3d
+    metrics["error"] = total_error / total_samples
+
+    print('saving evaluations...')
+    metrics_path = os.path.join(save_folder, 'metrics.json')
+    with open(metrics_path, 'w') as metrics_json:
+        json.dump(metrics, metrics_json)
+    
+    # save predictions
     preds["indexes"] = np.concatenate(preds["indexes"])
     preds["joints_3d"] = np.concatenate(preds["joints_3d"], axis=0)
     preds["joints_2d"] = np.concatenate(preds["joints_2d"], axis=0)
@@ -207,6 +344,8 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
     parser.add_argument('--config', type=str, default="experiments/syndata/test/syndata_alg_17jnts.yaml")
+    parser.add_argument('--save_folder', type=str, default="results/syndata")
+    parser.add_argument('--save_img', action='store_true')
     args = parser.parse_args()
 
     config = cfg.load_config(args.config)
@@ -214,14 +353,19 @@ if __name__ == "__main__":
     assert config.dataset.type in ("syndata", "human36m")
 
     device = torch.device(int(config.gpu_id))
+    print(device)
 
-    model = AlgebraicTriangulationNet(config, device=device).to(device)
+    model = AlgebraicTriangulationNet(config, device=device)
+
+    model = torch.nn.DataParallel(model, device_ids=[int(config.gpu_id)])
 
     if config.model.init_weights:
+        print("Initializing model weights..")
         model = train.load_pretrained_model(model, config)
-    
-    print("Loading data..")
 
+    # load data
+    print("Loading data..")
+    save_folder = os.path.join(os.getcwd(), args.save_folder)
     if config.dataset.type == "syndata":
         dataset = MultiView_SynData(config.dataset.data_root, load_joints=config.model.backbone.num_joints, invalid_joints=(), \
                                     bbox=config.dataset.bbox, image_shape=config.dataset.image_shape, \
@@ -231,9 +375,10 @@ if __name__ == "__main__":
                                                    shuffle=config.dataset.test.shuffle, \
                                                    num_workers=config.dataset.test.num_workers)
 
-        save_folder = os.path.join(os.getcwd(), 'results/mocap_syndata_%djnts' % config.model.backbone.num_joints)
+        # save_folder = os.path.join(os.getcwd(), 'results/mocap_syndata_%djnts' % config.model.backbone.num_joints)
         #save_folder = os.path.join(os.getcwd(), 'results/mocap_syndata')
-        syndata_test(model, dataloader, device, save_folder, make_vid=False)
+        syndata_test(config, model, dataloader, device, save_folder, \
+                     save_img=args.save_img, make_vid=False)
 
     elif config.dataset.type == "human36m":
         dataset = Human36MMultiViewDataset(
@@ -247,13 +392,14 @@ if __name__ == "__main__":
                     kind="human36m",
                     undistort_images=config.dataset.test.undistort_images,
                     ignore_cameras=config.dataset.test.ignore_cameras if hasattr(config.dataset.val, "ignore_cameras") else [],
-                    crop=config.dataset.test.crop if hasattr(config.dataset.val, "crop") else True,
+                    crop=True,
                 )
         dataloader = datasets_utils.human36m_loader(dataset, \
                                                     batch_size=config.dataset.test.batch_size, \
                                                     shuffle=config.dataset.test.shuffle, \
                                                     num_workers=config.dataset.test.num_workers)
 
-        save_folder = os.path.join(os.getcwd(), 'results/human36m_%djnts' % config.model.backbone.num_joints)
-        human36m_test(model, dataloader, device, save_folder, make_vid=False)
+        # save_folder = os.path.join(os.getcwd(), 'results/human36m_%djnts' % config.model.backbone.num_joints)
+        human36m_test(config, model, dataloader, device, save_folder, \
+                      save_img=args.save_img, make_vid=False)
 

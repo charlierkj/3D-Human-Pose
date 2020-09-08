@@ -14,7 +14,8 @@ from tensorboardX import SummaryWriter
 
 from utils import cfg
 from models.triangulation import AlgebraicTriangulationNet
-from models.loss import HeatmapMSELoss, PCK, KeypointsMSELoss, KeypointsMSESmoothLoss, KeypointsMAELoss, KeypointsL2Loss
+from models.loss import HeatmapMSELoss, KeypointsMSELoss, KeypointsMSESmoothLoss, KeypointsMAELoss, KeypointsL2Loss
+from models.metric import PCK, PCKh, PCK3D
 from datasets.multiview_syndata import MultiView_SynData
 import datasets.utils as datasets_utils
 import utils.visualize as visualize
