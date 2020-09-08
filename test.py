@@ -199,15 +199,20 @@ def syndata_test(config, model, dataloader, device, save_folder, \
     """
             
     # save evaluations
-    print("PCK:", total_detected_pck / total_joints_2d)
-    print("PCKh:", total_detected_pckh / total_joints_2d)
-    print("PCK3D:", total_detected_pck3d / total_joints_3d)
-    print("Error:", total_error / total_samples)
+    pck_acc = float((total_detected_pck / total_joints_2d).detach().cpu())
+    pckh_acc = float((total_detected_pckh / total_joints_2d).detach().cpu())
+    pck3d_acc = float((total_detected_pck3d / total_joints_3d).detach().cpu())
+    mean_error = float((total_error / total_samples).detach().cpu())
 
-    metrics["PCK@%.1f" % metric_pck.thresh] = total_detected_pck / total_joints_2d
-    metrics["PCKh@%.1f" % metric_pckh.thresh] = total_detected_pckh / total_joints_2d
-    metrics["PCK3D@%d" % metric_pck3d.thresh] = total_detected_pck3d / total_joints_3d
-    metrics["error"] = total_error / total_samples
+    print("PCK:", pck_acc)
+    print("PCKh:", pckh_acc)
+    print("PCK3D:", pck3d_acc)
+    print("Error:", mean_error)
+
+    metrics["PCK@%.1f" % metric_pck.thresh] = pck_acc
+    metrics["PCKh@%.1f" % metric_pckh.thresh] = pckh_acc
+    metrics["PCK3D@%d" % metric_pck3d.thresh] = pck3d_acc
+    metrics["error"] = mean_error
 
     print('saving evaluations...')
     metrics_path = os.path.join(save_folder, 'metrics.json')
@@ -310,17 +315,22 @@ def human36m_test(config, model, dataloader, device, save_folder, \
             total_detected_pck3d += detected_pck3d
             total_error += error * batch_size
 
-    # save evaluation
-    print("PCK:", total_detected_pck / total_joints_2d)
-    print("PCKh:", total_detected_pckh / total_joints_2d)
-    print("PCK3D:", total_detected_pck3d / total_joints_3d)
-    print("Error:", total_error / total_samples)
+    # save evaluations
+    pck_acc = float((total_detected_pck / total_joints_2d).detach().cpu())
+    pckh_acc = float((total_detected_pckh / total_joints_2d).detach().cpu())
+    pck3d_acc = float((total_detected_pck3d / total_joints_3d).detach().cpu())
+    mean_error = float((total_error / total_samples).detach().cpu())
+
+    print("PCK:", pck_acc)
+    print("PCKh:", pckh_acc)
+    print("PCK3D:", pck3d_acc)
+    print("Error:", mean_error)
 
     metrics = {}
-    metrics["PCK@%.1f" % metric_pck.thresh] = total_detected_pck / total_joints_2d
-    metrics["PCKh@%.1f" % metric_pckh.thresh] = total_detected_pckh / total_joints_2d
-    metrics["PCK3D@%d" % metric_pck3d.thresh] = total_detected_pck3d / total_joints_3d
-    metrics["error"] = total_error / total_samples
+    metrics["PCK@%.1f" % metric_pck.thresh] = pck_acc
+    metrics["PCKh@%.1f" % metric_pckh.thresh] = pckh_acc
+    metrics["PCK3D@%d" % metric_pck3d.thresh] = pck3d_acc
+    metrics["error"] = mean_error
 
     print('saving evaluations...')
     metrics_path = os.path.join(save_folder, 'metrics.json')
