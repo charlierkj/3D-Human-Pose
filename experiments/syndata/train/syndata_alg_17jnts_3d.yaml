@@ -2,25 +2,25 @@ title: "human36m_alg"
 kind: "human36m"
 vis_freq: 20
 vis_n_elements: 10
-gpu_id: 3
+gpu_id: 2
 
 opt:
-  criterion: "Heatmap"
+  criterion: "MSESmooth"
   mse_smooth_threshold: 400
 
   n_objects_per_epoch: 15000
   n_epochs: 10
 
-  lr: 0.0001
+  lr: 0.00001
 
   scale_keypoints_3d: 0.1
 
 model:
   name: "alg"
 
-  init_weights: false
-  checkpoint: "./data/pretrained/human36m/human36m_alg_10-04-2019/checkpoints/0060/weights.pth"
-  # checkpoint: "./logs/exp@06.08.2020-02.31.13/checkpoint/weights.pth"
+  init_weights: true
+  # checkpoint: "./data/pretrained/human36m/human36m_alg_10-04-2019/checkpoints/0060/weights.pth"
+  checkpoint: "./logs/exp_17jnts@07.09.2020-06.28.39/checkpoint/0009/weights.pth"
 
   use_confidences: true
   heatmap_multiplier: 1

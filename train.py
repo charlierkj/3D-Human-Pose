@@ -27,9 +27,9 @@ def load_pretrained_model(model, config, init_joints=17):
     model_state_dict = model.state_dict()
 
     pretrained_state_dict = torch.load(config.model.checkpoint)
-    for key in list(pretrained_state_dict.keys()):
-        new_key = key.replace("module.", "")
-        pretrained_state_dict[new_key] = pretrained_state_dict.pop(key)
+    # for key in list(pretrained_state_dict.keys()):
+    #     new_key = key.replace("module.", "")
+    #     pretrained_state_dict[new_key] = pretrained_state_dict.pop(key)
 
     new_pretrained_state_dict = {}
     for k, v in pretrained_state_dict.items():
@@ -153,7 +153,7 @@ def train_one_epoch(model, train_loader, criterion, metric, opt, e, device, \
 
     # save logging per epoch to tensorboard
     mean_loss = total_train_loss / total_samples
-    pck_acc = total_detected.type(torch.float32) / total_samples.type(torch.float32)
+    pck_acc = total_detected / total_samples
     mean_error = total_error / total_samples
     if writer is not None:
         writer.add_scalar("train_loss/epoch",  mean_loss, e)
@@ -278,6 +278,7 @@ if __name__ == "__main__":
 
     # configure optimizer
     opt = torch.optim.Adam(filter(lambda p : p.requires_grad, model.parameters()), lr=config.opt.lr)
+    # opt = torch.optim.RMSprop(model.parameters(), lr=config.opt.lr)
 
     multiview_train(config, model, train_loader, val_loader, criterion, opt, config.opt.n_epochs, device, \
                     resume=args.resume, logdir=args.logdir)
