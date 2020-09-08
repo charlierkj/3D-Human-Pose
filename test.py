@@ -269,7 +269,7 @@ def human36m_test(config, model, dataloader, device, save_folder, \
         total_error = 0
         
         for iter_idx, (images_batch, proj_mats_batch, joints_3d_gt_batch, joints_3d_valid_batch, indexes) in enumerate(dataloader):
-            print(iter_idx)
+            # print(iter_idx)
 
             if images_batch is None:
                 continue
@@ -401,7 +401,7 @@ if __name__ == "__main__":
                     scale_bbox=config.dataset.test.scale_bbox,
                     kind="human36m",
                     undistort_images=config.dataset.test.undistort_images,
-                    ignore_cameras=config.dataset.test.ignore_cameras if hasattr(config.dataset.val, "ignore_cameras") else [],
+                    ignore_cameras=config.dataset.test.ignore_cameras if hasattr(config.dataset.test, "ignore_cameras") else [],
                     crop=True,
                 )
         dataloader = datasets_utils.human36m_loader(dataset, \
