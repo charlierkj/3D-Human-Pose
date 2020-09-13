@@ -280,7 +280,7 @@ def human36m_test(config, model, dataloader, device, save_folder, \
             joints_3d_valid_batch = joints_3d_valid_batch.to(device)
 
             batch_size = images_batch.shape[0]
-            
+            print(images_batch.shape)
             joints_3d_pred, joints_2d_pred, heatmaps_pred, confidences_pred = model(images_batch, proj_mats_batch)
 
             preds["indexes"].append(indexes)

@@ -20,10 +20,11 @@ model:
 
   init_weights: true
   # checkpoint: "./data/pretrained/human36m/human36m_alg_10-04-2019/checkpoints/0060/weights.pth"
-  checkpoint: "./logs/exp_17jnts@07.09.2020-06.28.39/checkpoint/0009/weights.pth"
+  # checkpoint: "./logs/exp_17jnts@07.09.2020-06.28.39/checkpoint/0009/weights.pth"
+  checkpoint: "./logs/exp_17jnts@08.09.2020-11.01.07/checkpoint/0009/weights.pth"
 
   use_confidences: true
-  heatmap_multiplier: 100.0
+  heatmap_multiplier: 1
   heatmap_softmax: true
 
   backbone:
@@ -52,7 +53,7 @@ dataset:
     with_damaged_actions: true
     undistort_images: true
 
-    scale_bbox: 1.0
+    scale_bbox: 1.6
 
     shuffle: true
     randomize_n_views: false
@@ -61,12 +62,12 @@ dataset:
     num_workers: 4
 
   test:
-    batch_size: 4
+    batch_size: 2
     
     with_damaged_actions: true
     undistort_images: true
 
-    scale_bbox: 1.0
+    scale_bbox: 1.6
 
     shuffle: false
     randomize_n_views: false
