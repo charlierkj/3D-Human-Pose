@@ -9,7 +9,7 @@ opt:
   mse_smooth_threshold: 400
 
   n_objects_per_epoch: 15000
-  n_epochs: 4
+  n_epochs: 8
 
   lr: 0.0001
 
@@ -47,7 +47,7 @@ dataset:
   bbox: [160, 0, 1120, 960]
 
   train:
-    batch_size: 48
+    batch_size: 2
       
     with_damaged_actions: true
     undistort_images: true

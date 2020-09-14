@@ -124,10 +124,12 @@ def generate_pseudo_labels(config, model, h36m_loader, device, \
     # fill in parameters
     retval = {
         'dataset': config.dataset.type,
+        'split': "test" if test else "train",
         'image_shape': config.dataset.image_shape,
         'num_joints': config.model.backbone.num_joints,
-        'scale_bbox': config.dataset.train.scale_bbox,
-        'retain_every_n_frames': config.dataset.test.retain_every_n_frames if test else config.dataset.train.retain_every_n_frames
+        'scale_bbox': config.dataset.test.scale_bbox if test else config.dataset.train.scale_bbox,
+        'retain_every_n_frames': config.dataset.test.retain_every_n_frames if test else config.dataset.train.retain_every_n_frames,
+        'num_tfs': num_tfs
         }
     labels_dtype = np.dtype([
         ('data_idx', np.int32),
@@ -147,7 +149,7 @@ def generate_pseudo_labels(config, model, h36m_loader, device, \
         for iter_idx, (images_batch, proj_mats_batch, joints_3d_gt_batch, joints_3d_valid_batch, indexes) in enumerate(h36m_loader):
             # if iter_idx > 5:
             #     break
-            print(iter_idx)
+            # print(iter_idx)
             if images_batch is None:
                 continue
                     

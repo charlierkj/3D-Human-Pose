@@ -34,7 +34,7 @@ def train_one_epoch_ssl(model, syn_train_loader, h36m_train_loader, criterion, m
                         log_every_iters=1, vis_every_iters=1):
     model.train()
     batch_size = syn_train_loader.batch_size
-    iters_per_epoch = round(max(syn_train_loader.dataset.__len__(), h36m_train_loader.dataset.__len__()) / batch_size)
+    iters_per_epoch = round(min(syn_train_loader.dataset.__len__(), h36m_train_loader.dataset.__len__()) / batch_size)
     print("Estimated iterations per epoch is %d." % iters_per_epoch)
     
     total_train_loss_syn = 0
@@ -83,7 +83,7 @@ def train_one_epoch_ssl(model, syn_train_loader, h36m_train_loader, criterion, m
         h36m_joints_3d_pred, h36m_joints_2d_pred, h36m_heatmaps_pred, h36m_confidences_pred = model(h36m_images_batch, h36m_proj_mats_batch)
 
         pseudo_labels = np.load("pseudo_labels/human36m_train.npy", allow_pickle=True).item() # load pseudo labels
-        p = 0.2 * (e // 1 + 1) # percentage
+        p = 0.2 * (e // 2 + 1) # percentage
         score_thresh = consistency.get_score_thresh(pseudo_labels, p)
         h36m_joints_2d_gt_batch, h36m_joints_2d_valid_batch = \
                                  consistency.get_pseudo_labels(pseudo_labels, h36m_indexes, h36m_images_batch.shape[1], score_thresh)
@@ -225,9 +225,12 @@ def ssl_train(config, model, syn_train_loader, h36m_train_loader, val_loader, cr
 
     for e in range(start_epoch, epochs):
         # generate pseudo labels
-        if e % 1 == 0:
-            consistency.generate_pseudo_labels(config, model, h36m_train_loader, device, \
-                    num_tfs=5)
+        if e % 2 == 0:
+            if e == 0:
+                pass
+            else:
+                consistency.generate_pseudo_labels(config, model, h36m_train_loader, device, \
+                        num_tfs=5)
         
         # train for one epoch
         train_loss_syn, train_acc_syn, train_error_syn, \
