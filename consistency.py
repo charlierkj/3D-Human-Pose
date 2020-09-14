@@ -136,15 +136,17 @@ def generate_pseudo_labels(config, model, h36m_loader, device, \
         ])
     retval['labels'] = []
 
+    # re-configure data loader
     h36m_loader.shuffle=False
 
     print("Generating pseudo labels...")
+    print("Estimated number of iterations is: %d" % round(h36m_loader.dataset.__len__() / h36m_loader.batch_size))
     model.eval()
     with torch.no_grad():
         for iter_idx, (images_batch, proj_mats_batch, joints_3d_gt_batch, joints_3d_valid_batch, indexes) in enumerate(h36m_loader):
             # if iter_idx > 5:
             #     break
-
+            print(iter_idx)
             if images_batch is None:
                 continue
                     
@@ -185,6 +187,9 @@ def generate_pseudo_labels(config, model, h36m_loader, device, \
     print("Saving pseudo labels to %s" % write_path)
     np.save(write_path, retval)
     print("Done.")
+
+    # configure back data loader
+    h36m_loader.shuffle = config.dataset.train.shuffle
 
 
 

@@ -48,7 +48,7 @@ def train_one_epoch_ssl(model, syn_train_loader, h36m_train_loader, criterion, m
     total_samples_h36m = 0 # num_joints or num_frames
 
     # jointly training
-    joint_loader = zip(syn_train_loader, h36m_train_loader)
+    joint_loader = zip(cycle(syn_train_loader), h36m_train_loader)
 
     for iter_idx, ((syn_images_batch, syn_proj_mats_batch, syn_joints_3d_gt_batch, syn_joints_3d_valid_batch, syn_info_batch), \
                    (h36m_images_batch, h36m_proj_mats_batch, h36m_joints_3d_gt_batch, h36m_joints_3d_valid_batch, h36m_indexes))in enumerate(joint_loader):
