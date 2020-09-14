@@ -2,14 +2,14 @@ title: "human36m_alg"
 kind: "human36m"
 vis_freq: 20
 vis_n_elements: 10
-gpu_id: 6
+gpu_id: 2
 
 opt:
-  criterion: "MSESmooth"
+  criterion: "Heatmap"
   mse_smooth_threshold: 400
 
   n_objects_per_epoch: 15000
-  n_epochs: 8
+  n_epochs: 4
 
   lr: 0.0001
 
@@ -23,7 +23,7 @@ model:
   checkpoint: "./logs/exp_17jnts@08.09.2020-11.01.07/checkpoint/0009/weights.pth"
 
   use_confidences: true
-  heatmap_multiplier: 100.0
+  heatmap_multiplier: 1
   heatmap_softmax: true
 
   backbone:
@@ -44,10 +44,10 @@ dataset:
   labels_path: "../learnable-triangulation-pytorch/data/human36m/extra/human36m-multiview-labels-GTbboxes.npy"
 
   image_shape: [384, 384]
-  bbox: None
+  bbox: [160, 0, 1120, 960]
 
   train:
-    batch_size: 4
+    batch_size: 2
       
     with_damaged_actions: true
     undistort_images: true

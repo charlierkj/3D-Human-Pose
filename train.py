@@ -187,6 +187,7 @@ def multiview_train(config, model, train_loader, val_loader, criterion, opt, epo
     param_dict["train_batch_size"] = config.dataset.train.batch_size
     param_dict["test_batch_size"] = config.dataset.test.batch_size
     param_dict["image_shape"] = config.dataset.image_shape
+    param_dict["bbox"] = config.dataset.bbox
     param_dict["num_joints"] = config.model.backbone.num_joints
     param_dict["backbone_num_layers"] = config.model.backbone.num_layers
     param_dict["criterion"] = config.opt.criterion

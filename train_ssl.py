@@ -10,6 +10,7 @@ from datetime import datetime
 from PIL import Image
 import yaml
 
+from itertools import cycle
 from tensorboardX import SummaryWriter
 
 from utils import cfg
@@ -17,8 +18,10 @@ from models.triangulation import AlgebraicTriangulationNet
 from models.loss import HeatmapMSELoss, HeatmapMSELoss_2d, KeypointsMSELoss, KeypointsMSESmoothLoss, KeypointsMAELoss, KeypointsL2Loss
 from models.metric import PCK, PCKh, PCK3D
 from datasets.multiview_syndata import MultiView_SynData
+from datasets.human36m import Human36MMultiViewDataset
 import datasets.utils as datasets_utils
 import utils.visualize as visualize
+import train
 import test
 import utils.eval as utils_eval
 
@@ -26,8 +29,8 @@ import consistency
 
 
 def train_one_epoch_ssl(model, syn_train_loader, h36m_train_loader, criterion, metric, opt, e, device, \
-                        gamma=10, \
                         checkpoint_dir, writer=None, \
+                        gamma=10, \
                         log_every_iters=1, vis_every_iters=1):
     model.train()
     batch_size = syn_train_loader.batch_size
@@ -45,7 +48,7 @@ def train_one_epoch_ssl(model, syn_train_loader, h36m_train_loader, criterion, m
     total_samples_h36m = 0 # num_joints or num_frames
 
     # jointly training
-    joint_loader = zip(cycle(syn_train_loader), h36m_train_loader)
+    joint_loader = zip(syn_train_loader, h36m_train_loader)
 
     for iter_idx, ((syn_images_batch, syn_proj_mats_batch, syn_joints_3d_gt_batch, syn_joints_3d_valid_batch, syn_info_batch), \
                    (h36m_images_batch, h36m_proj_mats_batch, h36m_joints_3d_gt_batch, h36m_joints_3d_valid_batch, h36m_indexes))in enumerate(joint_loader):
@@ -80,7 +83,7 @@ def train_one_epoch_ssl(model, syn_train_loader, h36m_train_loader, criterion, m
         h36m_joints_3d_pred, h36m_joints_2d_pred, h36m_heatmaps_pred, h36m_confidences_pred = model(h36m_images_batch, h36m_proj_mats_batch)
 
         pseudo_labels = np.load("pseudo_labels/human36m_train.npy", allow_pickle=True).item() # load pseudo labels
-        p = 0.2 * (e // 2 + 1) # percentage
+        p = 0.2 * (e // 1 + 1) # percentage
         score_thresh = consistency.get_score_thresh(pseudo_labels, p)
         h36m_joints_2d_gt_batch, h36m_joints_2d_valid_batch = \
                                  consistency.get_pseudo_labels(pseudo_labels, h36m_indexes, h36m_images_batch.shape[1], score_thresh)
@@ -97,7 +100,7 @@ def train_one_epoch_ssl(model, syn_train_loader, h36m_train_loader, criterion, m
         opt.step()
 
         # evaluate on syndata
-        syn_detected, syn_error, syn_samples = utils_eval.eval_one_batch(metric, syn_joints_3d_pred, syn_joints_2d_pred, \
+        syn_detected, syn_error, syn_num_samples = utils_eval.eval_one_batch(metric, syn_joints_3d_pred, syn_joints_2d_pred, \
                                                                          syn_proj_mats_batch, syn_joints_3d_gt_batch, syn_joints_3d_valid_batch)
 
         total_train_loss_syn += syn_num_samples * syn_loss.item()
@@ -106,7 +109,7 @@ def train_one_epoch_ssl(model, syn_train_loader, h36m_train_loader, criterion, m
         total_samples_syn += syn_num_samples
 
         # evaluate on h36m
-        h36m_detected, h36m_error, h36m_samples = utils_eval.eval_one_batch(metric, h36m_joints_3d_pred, h36m_joints_2d_pred, \
+        h36m_detected, h36m_error, h36m_num_samples = utils_eval.eval_one_batch(metric, h36m_joints_3d_pred, h36m_joints_2d_pred, \
                                                                             h36m_proj_mats_batch, h36m_joints_3d_gt_batch, h36m_joints_3d_valid_batch)
 
         total_train_loss_h36m += h36m_num_samples * h36m_loss.item()
@@ -151,10 +154,10 @@ def train_one_epoch_ssl(model, syn_train_loader, h36m_train_loader, criterion, m
         
                 vis_joint = (iter_idx // vis_every_iters) % 17
                 heatmap_vis_syn = visualize.visualize_heatmap(syn_images_batch[0], syn_proj_mats_batch[0], syn_joints_3d_gt_batch[0], \
-                                                              syn_heatmaps_pred[0], syn_vis_joint=vis_joint)
+                                                              syn_heatmaps_pred[0], vis_joint=vis_joint)
                 writer.add_image("heatmap/syndata/joint_%d/iter" % vis_joint, heatmap_vis_syn.transpose(2, 0, 1), global_step=e*iters_per_epoch+vis_iter)
                 heatmap_vis_h36m = visualize.visualize_heatmap(h36m_images_batch[0], h36m_proj_mats_batch[0], h36m_joints_3d_gt_batch[0], \
-                                                               h36m_heatmaps_pred[0], h36m_vis_joint=vis_joint)
+                                                               h36m_heatmaps_pred[0], vis_joint=vis_joint)
                 writer.add_image("heatmap/h36m/joint_%d/iter" % vis_joint, heatmap_vis_h36m.transpose(2, 0, 1), global_step=e*iters_per_epoch+vis_iter)
 
     # save logging per epoch to tensorboard
@@ -199,6 +202,8 @@ def ssl_train(config, model, syn_train_loader, h36m_train_loader, val_loader, cr
     param_dict["dataset"] = 'joint'
     param_dict["train_batch_size"] = config.dataset.train.batch_size
     param_dict["test_batch_size"] = config.dataset.test.batch_size
+    param_dict["syndata_bbox"] = config.dataset.bbox
+    param_dict["h36m_scale_bbox"] = config.dataset.train.scale_bbox
     param_dict["image_shape"] = config.dataset.image_shape
     param_dict["num_joints"] = config.model.backbone.num_joints
     param_dict["backbone_num_layers"] = config.model.backbone.num_layers
@@ -218,15 +223,15 @@ def ssl_train(config, model, syn_train_loader, h36m_train_loader, val_loader, cr
 
     for e in range(start_epoch, epochs):
         # generate pseudo labels
-        if e % 2 == 0:
-            generate_pseudo_labels(config, model, h36m_train_loader, device, \
-                                   num_tfs=5)
+        if e % 1 == 0:
+            consistency.generate_pseudo_labels(config, model, h36m_train_loader, device, \
+                    num_tfs=5)
         
         # train for one epoch
         train_loss_syn, train_acc_syn, train_error_syn, \
         train_loss_h36m, train_acc_h36m, train_error_h36m \
-        = train_one_epoch_ssl(model, syn_train_loader, h36m_train_loader, criterion, metric, opt, e, device, gamma\
-                              checkpoint_dir, writer, log_every_iters, vis_every_iters)
+        = train_one_epoch_ssl(model, syn_train_loader, h36m_train_loader, criterion, metric, opt, e, device, \
+                              checkpoint_dir, writer, gamma, log_every_iters, vis_every_iters)
 
         # evaluate
         test_acc, test_error = test.test_one_epoch(model, val_loader, metric, device)
@@ -251,7 +256,7 @@ def ssl_train(config, model, syn_train_loader, h36m_train_loader, val_loader, cr
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('--config', type=str, default="experiments/syndata/test/syndata_alg_17jnts.yaml")
+    parser.add_argument('--config', type=str, default="experiments/human36m/train/human36m_alg_17jnts.yaml")
     parser.add_argument('--resume', action='store_true')
     parser.add_argument('--logdir', type=str, default="./logs")
     parser.add_argument('--gamma', type=float, default=10.0)
@@ -269,23 +274,24 @@ if __name__ == "__main__":
 
     if config.model.init_weights:
         print("Initializing model weights..")
-        model = load_pretrained_model(model, config)
+        model = train.load_pretrained_model(model, config)
 
     # load data
     print("Loading data..")
 
     # training data
-    syn_train_set = MultiView_SynData(config.dataset.data_root, load_joints=config.model.backbone.num_joints, invalid_joints=(), \
+    syndata_root = "../mocap_syndata/multiview_data"
+    syn_train_set = MultiView_SynData(syndata_root, load_joints=config.model.backbone.num_joints, invalid_joints=(), \
                                   bbox=config.dataset.bbox, image_shape=config.dataset.image_shape, \
                                   train=True)
-    syn_train_loader = datasets_utils.syndata_loader(train_set, \
+    syn_train_loader = datasets_utils.syndata_loader(syn_train_set, \
                                                  batch_size=config.dataset.train.batch_size, \
                                                  shuffle=config.dataset.train.shuffle, \
                                                  num_workers=config.dataset.train.num_workers)
 
     h36m_train_set = dataset = Human36MMultiViewDataset(
         h36m_root=config.dataset.data_root,
-        test=True,
+        train=True,
         image_shape=config.dataset.image_shape,
         labels_path=config.dataset.labels_path,
         with_damaged_actions=config.dataset.train.with_damaged_actions,
@@ -296,7 +302,7 @@ if __name__ == "__main__":
         ignore_cameras=config.dataset.train.ignore_cameras if hasattr(config.dataset.train, "ignore_cameras") else [],
         crop=True,
     )
-    h36m_train_loader = datasets_utils.human36m_loader(dataset, \
+    h36m_train_loader = datasets_utils.human36m_loader(h36m_train_set, \
                                                        batch_size=config.dataset.train.batch_size, \
                                                        shuffle=config.dataset.train.shuffle, \
                                                        num_workers=config.dataset.train.num_workers)

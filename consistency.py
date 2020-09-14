@@ -22,19 +22,24 @@ def get_score_thresh(pseudo_labels, percentage):
 
 
 def get_pseudo_labels(pseudo_labels, indexes, num_views, score_thresh):
-    joints_2d_gt_batch = []
-    joints_2d_gt_valid_batch = []
     data_indexes = pseudo_labels['labels']['data_idx']
     joints_2d_all = pseudo_labels['labels']['joints_2d']
     scores_all = pseudo_labels['labels']['scores']
-    for data_idx in indexes:
+
+    batch_size = len(indexes)
+    num_joints = joints_2d_all.shape[1]
+
+    joints_2d_gt_batch = np.zeros(shape=(batch_size, num_views, num_joints, 2), dtype=np.float32)
+    joints_2d_gt_valid_batch = np.zeros(shape=(batch_size, num_views, num_joints, 1), dtype=np.bool)
+
+    for i, data_idx in enumerate(indexes):
         joints_2d_gt = joints_2d_all[data_indexes==data_idx][0:num_views]
         scores = scores_all[data_indexes==data_idx][0:num_views]
         joints_2d_gt_valid = np.expand_dims(scores >= score_thresh, axis=-1)
-        joints_2d_gt_batch.append(joints_2d_gt)
-        joints_2d_gt_valid_batch.append(joints_2d_gt_valid)
-    joints_2d_gt_batch = torch.tensor(joints_2d_gt_batch) # batch_size x num_views x num_joints x 2
-    joints_2d_gt_valid_batch = torch.tensor(joints_2d_gt_valid_batch) # batch_size x num_views x num_joints x 1
+        joints_2d_gt_batch[i, 0:joints_2d_gt.shape[0], :, :] = joints_2d_gt
+        joints_2d_gt_valid_batch[i, 0:joints_2d_gt_valid.shape[0], :, :] = joints_2d_gt_valid
+    joints_2d_gt_batch = torch.from_numpy(joints_2d_gt_batch) # batch_size x num_views x num_joints x 2
+    joints_2d_gt_valid_batch = torch.from_numpy(joints_2d_gt_valid_batch) # batch_size x num_views x num_joints x 1
     return joints_2d_gt_batch, joints_2d_gt_valid_batch
 
 
@@ -130,6 +135,8 @@ def generate_pseudo_labels(config, model, h36m_loader, device, \
         ('scores', np.float32, (num_joints, ))
         ])
     retval['labels'] = []
+
+    h36m_loader.shuffle=False
 
     print("Generating pseudo labels...")
     model.eval()

@@ -37,7 +37,7 @@ class HeatmapMSELoss_2d(nn.Module):
     Same with HeatmapMSELoss, but uses 2d groundtruth.
     """
     def __init__(self, config):
-        super(HeatmapMSELoss, self).__init__()
+        super(HeatmapMSELoss_2d, self).__init__()
         self.image_shape = config.dataset.image_shape # [w, h]
 
     def forward(self, heatmaps_pred, joints_2d_gt_batch, joints_2d_valid_batch):

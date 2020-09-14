@@ -67,6 +67,7 @@ def syndata_test(config, model, dataloader, device, save_folder, \
     param_dict["dataset"] = config.dataset.type
     param_dict["test_batch_size"] = config.dataset.test.batch_size
     param_dict["image_shape"] = config.dataset.image_shape
+    param_dict["bbox"] = config.dataset.bbox
     param_dict["num_joints"] = config.model.backbone.num_joints
     if config.model.init_weights:
         param_dict["checkpoint"] = config.model.checkpoint
@@ -237,6 +238,7 @@ def human36m_test(config, model, dataloader, device, save_folder, \
     param_dict["dataset"] = config.dataset.type
     param_dict["test_batch_size"] = config.dataset.test.batch_size
     param_dict["image_shape"] = config.dataset.image_shape
+    param_dict["scale_bbox"] = config.dataset.test.scale_bbox
     param_dict["num_joints"] = config.model.backbone.num_joints
     if config.model.init_weights:
         param_dict["checkpoint"] = config.model.checkpoint
