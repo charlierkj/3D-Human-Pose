@@ -48,7 +48,7 @@ dataset:
   bbox: None
 
   train:
-    batch_size: 2
+    batch_size: 4
       
     with_damaged_actions: true
     undistort_images: true
@@ -62,7 +62,7 @@ dataset:
     num_workers: 4
 
   test:
-    batch_size: 2
+    batch_size: 4
     
     with_damaged_actions: true
     undistort_images: true
