@@ -32,6 +32,34 @@ class HeatmapMSELoss(nn.Module):
         loss = self.criterion(heatmaps_pred, heatmaps_gt)
         return loss * heatmap_shape[0] * heatmap_shape[1]
 
+class HeatmapMSELoss_2d(nn.Module):
+    """
+    Same with HeatmapMSELoss, but uses 2d groundtruth.
+    """
+    def __init__(self, config):
+        super(HeatmapMSELoss, self).__init__()
+        self.image_shape = config.dataset.image_shape # [w, h]
+
+    def forward(self, heatmaps_pred, joints_2d_gt_batch, joints_2d_valid_batch):
+        batch_size = heatmaps_pred.shape[0]
+        num_views = heatmaps_pred.shape[1]
+        heatmap_shape = tuple(heatmaps_pred.shape[3:]) # [h, w]
+        ratio_w = heatmap_shape[1] / self.image_shape[0]
+        ratio_h = heatmap_shape[0] / self.image_shape[1]
+        heatmaps_gt = torch.zeros_like(heatmaps_pred)
+        joints_2d_gt_batch_scaled = torch.zeros_like(joints_2d_gt_batch)
+        joints_2d_gt_batch_scaled[:, :, :, 0] = joints_2d_gt_batch[:, :, :, 0] * ratio_w
+        joints_2d_gt_batch_scaled[:, :, :, 1] = joints_2d_gt_batch[:, :, :, 1] * ratio_h
+        for batch_idx in range(batch_size):
+            for view_idx in range(num_views):
+                joints_2d_gt_scaled = joints_2d_gt_batch_scaled[batch_idx, view_idx, ...]
+                sigmas = torch.ones_like(joints_2d_gt_scaled) # unit str
+                heatmaps_gt[batch_idx, view_idx, ...] = render_points_as_2d_gaussians(joints_2d_gt_scaled, sigmas, heatmap_shape)
+        heatmaps_valid_batch = joints_2d_valid_batch.unsqueeze(-1)
+        loss = torch.sum((heatmaps_pred - heatmaps_gt) ** 2 * heatmaps_valid_batch)
+        loss = loss / max(1, torch.sum(heatmaps_valid_batch).item())
+        return loss
+
 
 class KeypointsMSELoss(nn.Module):
     def __init__(self):

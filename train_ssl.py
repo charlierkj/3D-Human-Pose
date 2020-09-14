@@ -14,13 +14,15 @@ from tensorboardX import SummaryWriter
 
 from utils import cfg
 from models.triangulation import AlgebraicTriangulationNet
-from models.loss import HeatmapMSELoss, KeypointsMSELoss, KeypointsMSESmoothLoss, KeypointsMAELoss, KeypointsL2Loss
+from models.loss import HeatmapMSELoss, HeatmapMSELoss_2d, KeypointsMSELoss, KeypointsMSESmoothLoss, KeypointsMAELoss, KeypointsL2Loss
 from models.metric import PCK, PCKh, PCK3D
 from datasets.multiview_syndata import MultiView_SynData
 import datasets.utils as datasets_utils
 import utils.visualize as visualize
 import test
 import utils.eval as utils_eval
+
+import consistency
 
 
 def train_one_epoch_ssl(model, syn_train_loader, h36m_train_loader, criterion, metric, opt, e, device, \
@@ -79,15 +81,15 @@ def train_one_epoch_ssl(model, syn_train_loader, h36m_train_loader, criterion, m
 
         pseudo_labels = np.load("pseudo_labels/human36m_train.npy", allow_pickle=True).item() # load pseudo labels
         p = 0.2 * (e // 2 + 1) # percentage
-        score_thresh = consistency.get_score_thresh(pseudo_labels, percentage=p)
-        h36m_joints_2d_gt_batch, h36m_joints_2d_valid_batch = consistency.get_pseudo_labels(pseudo_labels, h36m_indexes, score_thresh)
+        score_thresh = consistency.get_score_thresh(pseudo_labels, p)
+        h36m_joints_2d_gt_batch, h36m_joints_2d_valid_batch = \
+                                 consistency.get_pseudo_labels(pseudo_labels, h36m_indexes, h36m_images_batch.shape[1], score_thresh)
         h36m_joints_2d_gt_batch = h36m_joints_2d_gt_batch.to(device)
         h36m_joints_2d_valid_batch = h36m_joints_2d_valid_batch.to(device)
 
-        if isinstance(criterion, HeatmapMSELoss):
-            h36m_loss = criterion(h36m_heatmaps_pred, h36m_proj_mats_batch, h36m_joints_3d_gt_batch, h36m_joints_3d_valid_batch)
-        else:
-            h36m_loss = criterion(h36m_joints_3d_pred, h36m_joints_3d_gt_batch, h36m_joints_3d_valid_batch)
+        # use HeatmapMSELoss_2d, hardcoded
+        heatmap_loss_2d = HeatmapMSELoss_2d(config)
+        h36m_loss = heatmap_loss_2d(h36m_heatmaps_pred, h36m_joints_2d_gt_batch, h36m_joints_2d_valid_batch)
 
         # optimize
         loss = syn_loss + gamma * h36m_loss
@@ -283,7 +285,7 @@ if __name__ == "__main__":
 
     h36m_train_set = dataset = Human36MMultiViewDataset(
         h36m_root=config.dataset.data_root,
-        train=True,
+        test=True,
         image_shape=config.dataset.image_shape,
         labels_path=config.dataset.labels_path,
         with_damaged_actions=config.dataset.train.with_damaged_actions,

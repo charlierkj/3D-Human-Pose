@@ -12,6 +12,32 @@ import datasets.utils as datasets_utils
 import train
 
 
+def get_score_thresh(pseudo_labels, percentage):
+    scores = pseudo_labels['labels']['scores']
+    scores = scores.flatten()
+    scores = np.sort(scores)[::-1]
+    num_scores = len(scores)
+    idx = int(num_scores * percentage)
+    return scores[idx]
+
+
+def get_pseudo_labels(pseudo_labels, indexes, num_views, score_thresh):
+    joints_2d_gt_batch = []
+    joints_2d_gt_valid_batch = []
+    data_indexes = pseudo_labels['labels']['data_idx']
+    joints_2d_all = pseudo_labels['labels']['joints_2d']
+    scores_all = pseudo_labels['labels']['scores']
+    for data_idx in indexes:
+        joints_2d_gt = joints_2d_all[data_indexes==data_idx][0:num_views]
+        scores = scores_all[data_indexes==data_idx][0:num_views]
+        joints_2d_gt_valid = np.expand_dims(scores >= score_thresh, axis=-1)
+        joints_2d_gt_batch.append(joints_2d_gt)
+        joints_2d_gt_valid_batch.append(joints_2d_gt_valid)
+    joints_2d_gt_batch = torch.tensor(joints_2d_gt_batch) # batch_size x num_views x num_joints x 2
+    joints_2d_gt_valid_batch = torch.tensor(joints_2d_gt_valid_batch) # batch_size x num_views x num_joints x 1
+    return joints_2d_gt_batch, joints_2d_gt_valid_batch
+
+
 def consistency_ensemble(model, images_batch, proj_mats_batch, num_tfs=4):
     sf = 0.25 # scale factor
     rf = 30 # angle factor
