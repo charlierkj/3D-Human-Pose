@@ -1,7 +1,9 @@
 import os, sys
+import argparse
 import numpy as np
 import torch
 import torchgeometry as tgm
+import matplotlib.pyplot as plt
 
 from utils import op, cfg
 from models.triangulation import AlgebraicTriangulationNet
@@ -10,19 +12,20 @@ import datasets.utils as datasets_utils
 import train
 
 
-def consistency_ensemble(model, images_batch, proj_mats_batch, num_tfs=5):
+def consistency_ensemble(model, images_batch, proj_mats_batch, num_tfs=4):
     sf = 0.25 # scale factor
     rf = 30 # angle factor
     
     batch_size = images_batch.shape[0]
     num_views = images_batch.shape[1]
     image_shape = images_batch.shape[3:] # [h, w]
+
     for i in range(num_tfs):
         if i==0:
             # original images
-            _, _, heatmaps_pred, _ = model(images_batch, proj_mats_batch)
+            _, joints_2d_org, heatmaps_pred, _ = model(images_batch, proj_mats_batch)
             num_joints = heatmaps_pred.shape[2]
-            heatmap_shape = heatmaps_warped.shape[3:] # [h, w]
+            heatmap_shape = heatmaps_pred.shape[3:] # [h, w]
             heatmaps_pred = heatmaps_pred.view(batch_size * num_views, num_joints, *heatmap_shape)
         else:
             # warping images
@@ -35,6 +38,7 @@ def consistency_ensemble(model, images_batch, proj_mats_batch, num_tfs=5):
             angle = (rf * torch.randn(batch_size * num_views)).clamp(-2 * rf, 2 * rf) # rotation angle
 
             M = tgm.get_rotation_matrix2d(image_center, angle, scale) # transform
+            M = M.to(images_expanded.device)
             images_warped = tgm.warp_affine(images_expanded, M, \
                                             dsize=(image_shape[0], image_shape[1]))
             images_warped = images_warped.view(batch_size, num_views, 3, *image_shape)
@@ -50,20 +54,26 @@ def consistency_ensemble(model, images_batch, proj_mats_batch, num_tfs=5):
             angle_back = (- angle)
 
             M_back = tgm.get_rotation_matrix2d(heatmap_center, angle_back, scale_back)
+            M_back = M_back.to(heatmaps_warped.device)
             heatmaps_back = tgm.warp_affine(heatmaps_warped.view(batch_size * num_views, num_joints, *heatmap_shape), M_back, \
                                             dsize=(heatmap_shape[0], heatmap_shape[1]))
+            heatmaps_back /= heatmaps_back.sum(dim=(2,3), keepdim=True)
             heatmaps_pred += heatmaps_back
 
     # caculate coordinates and scores
     heatmaps_pred /= num_tfs # average heatmaps
-    joints_2d_pred, heatmaps_pred = op.integrate_tensor_2d(heatmaps_pred, True)
-    scores_pred = heatmaps_pred[torch.arange(batch_size * num_views).repeat_interleave(num_joints), \
-                                torch.arange(num_joints).repeat(batch_size * num_views), \
-                                joints_2d_pred.view(-1, 2).type(torch.int64)[:, 1], \ # y
-                                joints_2d_pred.view(-1, 2).type(torch.int64)[:, 0]] # x
-    # reshape back
-    joints_2d_pred = joints_2d_pred.view(batch_size, num_views, num_joints, 2)
-    scores_pred = scores_pred.view(batch_size, num_views, num_joints)
+    # joints_2d_pred, heatmaps_pred = op.integrate_tensor_2d(heatmaps_pred, False)
+    # scores_pred = heatmaps_pred[torch.arange(batch_size * num_views).repeat_interleave(num_joints), \
+    #                             torch.arange(num_joints).repeat(batch_size * num_views), \
+    #                             joints_2d_pred.view(-1, 2).type(torch.int64)[:, 1], \
+    #                             joints_2d_pred.view(-1, 2).type(torch.int64)[:, 0]]
+    # # reshape back
+    # joints_2d_pred = joints_2d_pred.view(batch_size, num_views, num_joints, 2)
+    # scores_pred = scores_pred.view(batch_size, num_views, num_joints)
+    scores_pred, max_idx = torch.max(heatmaps_pred.view(batch_size, num_views, num_joints, -1), dim=-1)
+    joints_2d_pred = torch.zeros_like(joints_2d_org)
+    joints_2d_pred[:, :, :, 0] = max_idx % heatmap_shape[1] # x
+    joints_2d_pred[:, :, :, 1] = max_idx // heatmap_shape[1] # y
     # upscale coordinates
     joints_2d_transformed = torch.zeros_like(joints_2d_pred)
     joints_2d_transformed[:, :, :, 0] = joints_2d_pred[:, :, :, 0] * (image_shape[1] / heatmap_shape[1])
@@ -77,7 +87,7 @@ def consistency_ensemble(model, images_batch, proj_mats_batch, num_tfs=5):
 
 
 def generate_pseudo_labels(config, model, h36m_loader, device, \
-                           num_tfs=5):
+                           num_tfs=4, test=False):
     num_joints = config.model.backbone.num_joints
 
     # fill in parameters
@@ -99,6 +109,9 @@ def generate_pseudo_labels(config, model, h36m_loader, device, \
     model.eval()
     with torch.no_grad():
         for iter_idx, (images_batch, proj_mats_batch, joints_3d_gt_batch, joints_3d_valid_batch, indexes) in enumerate(h36m_loader):
+            # if iter_idx > 5:
+            #     break
+
             if images_batch is None:
                 continue
                     
@@ -114,7 +127,7 @@ def generate_pseudo_labels(config, model, h36m_loader, device, \
             joints_2d_pred, scores_pred = consistency_ensemble(model, images_batch, proj_mats_batch, num_tfs=num_tfs)
 
             # fill in pseudo labels
-            for batch_idx, data_idx in enumerate(indexes:)
+            for batch_idx, data_idx in enumerate(indexes):
                 for view_idx in range(num_views):
                     labels_segment = np.empty(1, dtype=labels_dtype)
                     labels_segment['data_idx'] = data_idx
@@ -131,12 +144,10 @@ def generate_pseudo_labels(config, model, h36m_loader, device, \
     # save pseudo labels
     save_folder = "pseudo_labels"
     os.makedirs(save_folder, exist_ok=True)
-    if h36m_loader.dataset.train:
-        write_path = os.path.join(save_folder, "human36m_train.npy")
-    elif h36m_loader.dataset.test:
+    if test:
         write_path = os.path.join(save_folder, "human36m_test.npy")
     else:
-        raise ValueError("Need to specify train / test split for dataset.")
+        write_path = os.path.join(save_folder, "human36m_train.npy")
 
     print("Saving pseudo labels to %s" % write_path)
     np.save(write_path, retval)
@@ -148,7 +159,7 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
     parser.add_argument('--config', type=str, default="experiments/human36m/test/human36m_alg_17jnts.yaml")
-    parser.add_argument('--num_tfs', type=int, default=5)
+    parser.add_argument('--num_tfs', type=int, default=4)
     parser.add_argument('--test', action='store_true')
     args = parser.parse_args()
 
@@ -208,5 +219,5 @@ if __name__ == "__main__":
                                                     shuffle=config.dataset.train.shuffle, \
                                                     num_workers=config.dataset.train.num_workers)
 
-    generate_pseudo_labels(config, model, dataloader, device, num_tfs=args.num_tfs)
+    generate_pseudo_labels(config, model, dataloader, device, num_tfs=args.num_tfs, test=args.test)
 

@@ -280,9 +280,9 @@ def human36m_test(config, model, dataloader, device, save_folder, \
             joints_3d_valid_batch = joints_3d_valid_batch.to(device)
 
             batch_size = images_batch.shape[0]
-            print(images_batch.shape)
-            joints_3d_pred, joints_2d_pred, heatmaps_pred, confidences_pred = model(images_batch, proj_mats_batch)
 
+            joints_3d_pred, joints_2d_pred, heatmaps_pred, confidences_pred = model(images_batch, proj_mats_batch)
+            print(heatmaps_pred.max())
             preds["indexes"].append(indexes)
             preds["joints_3d"].append(joints_3d_pred.detach().cpu().numpy())
             preds["joints_2d"].append(joints_2d_pred.detach().cpu().numpy())
@@ -293,10 +293,19 @@ def human36m_test(config, model, dataloader, device, save_folder, \
                 imgs_folder = os.path.join(save_folder, "imgs")
                 os.makedirs(imgs_folder, exist_ok=True)
                 if iter_idx % saveimg_per_iter == 0:
-                    img = visualize.visualize_pred(images_batch[0], proj_mats_batch[0], joints_3d_gt_batch[0], joints_3d_pred[0], joints_2d_pred[0])
-                    im = Image.fromarray(img)
-                    img_path = os.path.join(imgs_folder, "%06d.png" % indexes[0])
-                    im.save(img_path)
+                    # joints plot
+                    img_jnt = visualize.visualize_pred(images_batch[0], proj_mats_batch[0], joints_3d_gt_batch[0], joints_3d_pred[0], joints_2d_pred[0])
+                    im_jnt = Image.fromarray(img_jnt)
+                    img_path = os.path.join(imgs_folder, "joints_%06d.png" % indexes[0])
+                    im_jnt.save(img_path)
+
+                    # heatmaps plot
+                    vis_joint = (iter_idx // saveimg_per_iter) % 17
+                    img_hm = visualize.visualize_heatmap(images_batch[0], proj_mats_batch[0], joints_3d_gt_batch[0], \
+                            heatmaps_pred[0], vis_joint=vis_joint)
+                    im_hm = Image.fromarray(img_hm)
+                    img_path = os.path.join(imgs_folder, "heatmap_%06d.png" % indexes[0])
+                    im_hm.save(img_path)
 
             # evaluate
             detected_pck, num_joints_2d = metric_pck(joints_2d_pred, proj_mats_batch, \
