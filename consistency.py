@@ -126,7 +126,8 @@ def generate_pseudo_labels(config, model, h36m_loader, device, \
         'dataset': config.dataset.type,
         'image_shape': config.dataset.image_shape,
         'num_joints': config.model.backbone.num_joints,
-        'scale_bbox': config.dataset.train.scale_bbox
+        'scale_bbox': config.dataset.train.scale_bbox,
+        'retain_every_n_frames': config.dataset.test.retain_every_n_frames if test else config.dataset.train.retain_every_n_frames
         }
     labels_dtype = np.dtype([
         ('data_idx', np.int32),
@@ -226,7 +227,7 @@ if __name__ == "__main__":
                     image_shape=config.dataset.image_shape,
                     labels_path=config.dataset.labels_path,
                     with_damaged_actions=config.dataset.test.with_damaged_actions,
-                    retain_every_n_frames_in_test=config.dataset.test.retain_every_n_frames_in_test,
+                    retain_every_n_frames=config.dataset.test.retain_every_n_frames,
                     scale_bbox=config.dataset.test.scale_bbox,
                     kind="human36m",
                     undistort_images=config.dataset.test.undistort_images,
@@ -245,7 +246,7 @@ if __name__ == "__main__":
                     image_shape=config.dataset.image_shape,
                     labels_path=config.dataset.labels_path,
                     with_damaged_actions=config.dataset.train.with_damaged_actions,
-                    retain_every_n_frames_in_test=config.dataset.test.retain_every_n_frames_in_test,
+                    retain_every_n_frames=config.dataset.train.retain_every_n_frames,
                     scale_bbox=config.dataset.train.scale_bbox,
                     kind="human36m",
                     undistort_images=config.dataset.train.undistort_images,

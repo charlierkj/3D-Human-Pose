@@ -48,7 +48,7 @@ def train_one_epoch_ssl(model, syn_train_loader, h36m_train_loader, criterion, m
     total_samples_h36m = 0 # num_joints or num_frames
 
     # jointly training
-    joint_loader = zip(cycle(syn_train_loader), h36m_train_loader)
+    joint_loader = zip(syn_train_loader, h36m_train_loader)
 
     for iter_idx, ((syn_images_batch, syn_proj_mats_batch, syn_joints_3d_gt_batch, syn_joints_3d_valid_batch, syn_info_batch), \
                    (h36m_images_batch, h36m_proj_mats_batch, h36m_joints_3d_gt_batch, h36m_joints_3d_valid_batch, h36m_indexes))in enumerate(joint_loader):
@@ -204,6 +204,8 @@ def ssl_train(config, model, syn_train_loader, h36m_train_loader, val_loader, cr
     param_dict["test_batch_size"] = config.dataset.test.batch_size
     param_dict["syndata_bbox"] = config.dataset.bbox
     param_dict["h36m_scale_bbox"] = config.dataset.train.scale_bbox
+    param_dict["h36m_train_retain_every_n_frames"] = config.dataset.train.retain_every_n_frames
+    param_dict["h36m_test_retain_every_n_frames"] = config.dataset.test.retain_every_n_frames
     param_dict["image_shape"] = config.dataset.image_shape
     param_dict["num_joints"] = config.model.backbone.num_joints
     param_dict["backbone_num_layers"] = config.model.backbone.num_layers
@@ -295,7 +297,7 @@ if __name__ == "__main__":
         image_shape=config.dataset.image_shape,
         labels_path=config.dataset.labels_path,
         with_damaged_actions=config.dataset.train.with_damaged_actions,
-        retain_every_n_frames_in_test=config.dataset.test.retain_every_n_frames_in_test,
+        retain_every_n_frames=config.dataset.train.retain_every_n_frames,
         scale_bbox=config.dataset.train.scale_bbox,
         kind="human36m",
         undistort_images=config.dataset.train.undistort_images,
@@ -314,7 +316,7 @@ if __name__ == "__main__":
         image_shape=config.dataset.image_shape,
         labels_path=config.dataset.labels_path,
         with_damaged_actions=config.dataset.test.with_damaged_actions,
-        retain_every_n_frames_in_test=config.dataset.test.retain_every_n_frames_in_test,
+        retain_every_n_frames=config.dataset.test.retain_every_n_frames,
         scale_bbox=config.dataset.test.scale_bbox,
         kind="human36m",
         undistort_images=config.dataset.test.undistort_images,

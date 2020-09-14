@@ -408,7 +408,7 @@ if __name__ == "__main__":
                     image_shape=config.dataset.image_shape,
                     labels_path=config.dataset.labels_path,
                     with_damaged_actions=config.dataset.test.with_damaged_actions,
-                    retain_every_n_frames_in_test=config.dataset.test.retain_every_n_frames_in_test,
+                    retain_every_n_frames=config.dataset.test.retain_every_n_frames,
                     scale_bbox=config.dataset.test.scale_bbox,
                     kind="human36m",
                     undistort_images=config.dataset.test.undistort_images,

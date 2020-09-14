@@ -60,6 +60,8 @@ dataset:
     max_n_views: null
     num_workers: 4
 
+    retain_every_n_frames: 1
+
   test:
     batch_size: 4
     
@@ -74,4 +76,4 @@ dataset:
     max_n_views: null
     num_workers: 4
 
-    retain_every_n_frames_in_test: 1
+    retain_every_n_frames: 1
