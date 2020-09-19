@@ -87,7 +87,9 @@ def train_one_epoch(model, train_loader, criterion, metric, opt, e, device, \
     total_error = 0
     total_samples = 0 # num_joints or num_frames
 
-    for iter_idx, (images_batch, proj_mats_batch, joints_3d_gt_batch, joints_3d_valid_batch, info_batch) in enumerate(train_loader):
+    for iter_idx, (images_batch, proj_mats_batch, joints_3d_gt_batch, joints_3d_valid_batch, joints_2d_gt_batch, info_batch) \
+        in enumerate(train_loader):
+        
         if images_batch is None:
             continue
 
@@ -95,6 +97,7 @@ def train_one_epoch(model, train_loader, criterion, metric, opt, e, device, \
         proj_mats_batch = proj_mats_batch.to(device)
         joints_3d_gt_batch = joints_3d_gt_batch.to(device)
         joints_3d_valid_batch = joints_3d_valid_batch.to(device)
+        joints_2d_gt_batch = joints_2d_gt_batch.to(device)
 
         batch_size = images_batch.shape[0]
 
@@ -107,7 +110,7 @@ def train_one_epoch(model, train_loader, criterion, metric, opt, e, device, \
 
         # calculate loss
         if isinstance(criterion, HeatmapMSELoss):
-            loss = criterion(heatmaps_pred, proj_mats_batch, joints_3d_gt_batch, joints_3d_valid_batch)
+            loss = criterion(heatmaps_pred, joints_2d_gt_batch)
         else:
             loss = criterion(joints_3d_pred, joints_3d_gt_batch, joints_3d_valid_batch)
 
@@ -118,7 +121,8 @@ def train_one_epoch(model, train_loader, criterion, metric, opt, e, device, \
 
         # evaluate batch
         detected, error, num_samples = utils_eval.eval_one_batch(metric, joints_3d_pred, joints_2d_pred, \
-                                                                 proj_mats_batch, joints_3d_gt_batch, joints_3d_valid_batch)
+                                                                 proj_mats_batch, joints_3d_gt_batch, joints_3d_valid_batch, \
+                                                                 joints_2d_gt_batch)
 
         total_train_loss += num_samples * loss.item()
         total_detected += detected
@@ -143,8 +147,9 @@ def train_one_epoch(model, train_loader, criterion, metric, opt, e, device, \
             vis_iter = iter_idx
             # visualize first sample in batch
             if writer is not None:
-                joints_vis = visualize.visualize_pred(images_batch[0], proj_mats_batch[0], joints_3d_gt_batch[0], \
-                                                      joints_3d_pred[0], joints_2d_pred[0])
+                # joints_vis = visualize.visualize_pred(images_batch[0], proj_mats_batch[0], joints_3d_gt_batch[0], \
+                #                                       joints_3d_pred[0], joints_2d_pred[0])
+                joints_vis = visualize.visualize_pred_2D(images_batch[0], joints_2d_gt_batch[0], joints_2d_pred[0])
                 writer.add_image("joints/iter", joints_vis.transpose(2, 0, 1), global_step=e*iters_per_epoch+vis_iter)
         
                 vis_joint = (iter_idx // vis_every_iters) % 17
@@ -254,7 +259,7 @@ if __name__ == "__main__":
     print("Loading data..")
     train_set = MultiView_SynData(config.dataset.data_root, load_joints=config.model.backbone.num_joints, invalid_joints=(), \
                                   bbox=config.dataset.bbox, image_shape=config.dataset.image_shape, \
-                                  train=True)
+                                  train=True, with_aug=config.dataset.train.with_aug)
     train_loader = datasets_utils.syndata_loader(train_set, \
                                                  batch_size=config.dataset.train.batch_size, \
                                                  shuffle=config.dataset.train.shuffle, \
@@ -262,7 +267,7 @@ if __name__ == "__main__":
 
     val_set = MultiView_SynData(config.dataset.data_root, load_joints=config.model.backbone.num_joints, invalid_joints=(), \
                                 bbox=config.dataset.bbox, image_shape=config.dataset.image_shape, \
-                                test=True)
+                                test=True, with_aug=config.dataset.test.with_aug)
     val_loader = datasets_utils.syndata_loader(val_set, \
                                                batch_size=config.dataset.test.batch_size, \
                                                shuffle=config.dataset.test.shuffle, \

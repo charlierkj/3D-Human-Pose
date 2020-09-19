@@ -161,15 +161,17 @@ def syndata_collate_fn(batch):
         return None
 
     images_batch = torch.stack([sample['images'] for sample in samples], dim=0) # batch_size x num_views x 3 x h x w
-    proj_mats_batch = torch.stack([torch.stack([torch.from_numpy(cam.get_P()) for cam in sample['cameras']], dim=0)\
-                                   for sample in samples], dim=0) # batch_size x num_views x 3 x 4
+    #proj_mats_batch = torch.stack([torch.stack([torch.from_numpy(cam.get_P()) for cam in sample['cameras']], dim=0)\
+    #                               for sample in samples], dim=0) # batch_size x num_views x 3 x 4
+    proj_mats_batch = torch.stack([sample['proj_mats'] for sample in samples], dim=0) # batch_size x num_views x 3 x 4
     joints_3d_gt_batch = torch.stack([sample['joints_3d_gt'] for sample in samples], dim=0) # batch_size x num_joints x 3
     joints_3d_valid_batch = torch.stack([sample['joints_3d_valid'] for sample in samples], dim=0) # batch_size x num_joints x 1
+    joints_2d_gt_batch = torch.stack([sample['joints_2d_gt'] for sample in samples], dim=0) # batch_size x num_views x num_joints x 2
 
     images_batch, proj_mats_batch, joints_3d_gt_batch, joints_3d_valid_batch \
                   = images_batch.type(torch.float32), proj_mats_batch.type(torch.float32), joints_3d_gt_batch.type(torch.float32), joints_3d_valid_batch.type(torch.float32)
     info_batch = [[sample['info'].split('_')[i] if (i==0) else int(sample['info'].split('_')[i]) for i in range(len(sample['info'].split('_')))] for sample in samples]
-    return images_batch, proj_mats_batch, joints_3d_gt_batch, joints_3d_valid_batch, info_batch
+    return images_batch, proj_mats_batch, joints_3d_gt_batch, joints_3d_valid_batch, joints_2d_gt_batch, info_batch
 
 
 def syndata_loader(dataset, batch_size=1, shuffle=False, num_workers=4):

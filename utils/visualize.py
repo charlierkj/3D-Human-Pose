@@ -262,6 +262,42 @@ def visualize_pred(images, proj_mats, joints_3d_gt, joints_3d_pred, joints_2d_pr
     plt.close('all')
     return fig_np
 
+def visualize_pred_2D(images, joints_2d_gt, joints_2d_pred, size=5):
+    """visualize pose prediction for single data sample."""
+    num_views = images.shape[0]
+    num_jnts = joints_3d_gt.shape[0]
+    fig, axes = plt.subplots(nrows=2, ncols=num_views, figsize=(num_views * size, 2 * size))
+    axes = axes.reshape(2, num_views)
+
+    # plot images
+    if torch.is_tensor(images):
+        images = images.cpu().numpy()
+    images = np.moveaxis(images, 1, -1) # num_views x C x H x W -> num_views x H x W x C
+    images = images[..., (2, 1, 0)] # BGR -> RGB
+    images = np.clip(255 * (images * IMAGENET_STD + IMAGENET_MEAN), 0, 255).astype(np.uint8) # denormalize
+    #images = images[..., (2, 1, 0)] # BGR -> RGB
+    
+    for view_idx in range(num_views):
+        axes[0, view_idx].imshow(images[view_idx, ::])
+        axes[1, view_idx].imshow(images[view_idx, ::])
+        axes[1, view_idx].set_xlabel('view_%d' % (view_idx + 1), size='large')
+
+    # plot groundtruth poses
+    axes[0, 0].set_ylabel('2D groundtruth', size='large')
+    for view_idx in range(num_views):
+        draw_pose_2D(joints_2d_gt[view_idx, :, :], axes[0, view_idx])
+
+    # plot predicted 2D poses
+    axes[1, 0].set_ylabel('2D prediction', size='large')
+    for view_idx in range(num_views):
+        draw_pose_2D(joints_2d_pred[view_idx, :, :], axes[1, view_idx])
+
+    fig.tight_layout()
+    fig.canvas.draw()
+    fig_np = np.array(fig.canvas.renderer._renderer)
+    plt.close('all')
+    return fig_np
+
 def visualize_heatmap(images, proj_mats, joints_3d_gt, heatmaps_pred, vis_joint=0, size=5):
     """visualize heatmap prediction for single data sample."""
     num_views = images.shape[0]

@@ -7,6 +7,7 @@ import utils.visualize as visualize
 from utils.op import render_points_as_2d_gaussians
 
 
+"""
 class HeatmapMSELoss(nn.Module):
     def __init__(self, config):
         super(HeatmapMSELoss, self).__init__()
@@ -31,16 +32,18 @@ class HeatmapMSELoss(nn.Module):
                 heatmaps_gt[batch_idx, view_idx, ...] = render_points_as_2d_gaussians(joints_2d_gt_scaled, sigmas, heatmap_shape)
         loss = self.criterion(heatmaps_pred, heatmaps_gt)
         return loss * heatmap_shape[0] * heatmap_shape[1]
+"""
 
-class HeatmapMSELoss_2d(nn.Module):
+class HeatmapMSELoss(nn.Module):
     """
     Same with HeatmapMSELoss, but uses 2d groundtruth.
     """
     def __init__(self, config):
-        super(HeatmapMSELoss_2d, self).__init__()
+        super(HeatmapMSELoss, self).__init__()
+        self.criterion = nn.MSELoss(reduction='mean')
         self.image_shape = config.dataset.image_shape # [w, h]
 
-    def forward(self, heatmaps_pred, joints_2d_gt_batch, joints_2d_valid_batch):
+    def forward(self, heatmaps_pred, joints_2d_gt_batch, joints_2d_valid_batch=None):
         batch_size = heatmaps_pred.shape[0]
         num_views = heatmaps_pred.shape[1]
         heatmap_shape = tuple(heatmaps_pred.shape[3:]) # [h, w]
@@ -55,9 +58,13 @@ class HeatmapMSELoss_2d(nn.Module):
                 joints_2d_gt_scaled = joints_2d_gt_batch_scaled[batch_idx, view_idx, ...]
                 sigmas = torch.ones_like(joints_2d_gt_scaled) # unit str
                 heatmaps_gt[batch_idx, view_idx, ...] = render_points_as_2d_gaussians(joints_2d_gt_scaled, sigmas, heatmap_shape)
-        heatmaps_valid_batch = joints_2d_valid_batch.unsqueeze(-1)
-        loss = torch.sum((heatmaps_pred - heatmaps_gt) ** 2 * heatmaps_valid_batch)
-        loss = loss / max(1, torch.sum(heatmaps_valid_batch).item())
+        if joints_2d_valid_batch is None:
+            loss = self.criterion(heatmaps_pred, heatmaps_gt)
+            loss *= heatmap_shape[0] * heatmap_shape[1]
+        else:
+            heatmaps_valid_batch = joints_2d_valid_batch.unsqueeze(-1)
+            loss = torch.sum((heatmaps_pred - heatmaps_gt) ** 2 * heatmaps_valid_batch)
+            loss = loss / max(1, torch.sum(heatmaps_valid_batch).item())
         return loss
 
 

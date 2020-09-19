@@ -31,7 +31,9 @@ def test_one_epoch(model, val_loader, metric, device):
         total_samples = 0
         total_error = 0
         total_detected = 0
-        for iter_idx, (images_batch, proj_mats_batch, joints_3d_gt_batch, joints_3d_valid_batch, info_batch) in enumerate(val_loader):
+        for iter_idx, (images_batch, proj_mats_batch, joints_3d_gt_batch, joints_3d_valid_batch, joints_2d_gt_batch, info_batch) \
+            in enumerate(val_loader):
+            
             if images_batch is None:
                 continue
                     
@@ -39,11 +41,13 @@ def test_one_epoch(model, val_loader, metric, device):
             proj_mats_batch = proj_mats_batch.to(device)
             joints_3d_gt_batch = joints_3d_gt_batch.to(device)
             joints_3d_valid_batch = joints_3d_valid_batch.to(device)
+            joints_2d_gt_batch = joints_2d_gt_batch.to(device)
             batch_size = images_batch.shape[0]
             joints_3d_pred, joints_2d_pred, heatmaps_pred, confidences_pred = model(images_batch, proj_mats_batch)
 
             detected, error, num_samples = utils_eval.eval_one_batch(metric, joints_3d_pred, joints_2d_pred, \
-                                                                     proj_mats_batch, joints_3d_gt_batch, joints_3d_valid_batch)
+                                                                     proj_mats_batch, joints_3d_gt_batch, joints_3d_valid_batch, \
+                                                                     joints_2d_gt_batch)
 
             total_detected += detected
             total_error += num_samples * error
