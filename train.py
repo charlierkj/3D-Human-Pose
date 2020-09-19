@@ -198,6 +198,7 @@ def multiview_train(config, model, train_loader, val_loader, criterion, opt, epo
     param_dict["criterion"] = config.opt.criterion
     param_dict["opt_lr"] = config.opt.lr
     param_dict["epochs"] = config.opt.n_epochs
+    param_dict["with_aug"] = config.dataset.train.with_aug
     with open(yaml_path, 'w') as f:
         data = yaml.dump(param_dict, f)
     

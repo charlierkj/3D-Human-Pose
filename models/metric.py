@@ -8,10 +8,9 @@ from utils.op import render_points_as_2d_gaussians
 
 """
 class PCK(nn.Module):
-    """
     2D Percentage of Correct Keypoints.
     default: PCK@0.2
-    """
+
     def __init__(self, thresh=0.2):
         super(PCK, self).__init__()
         self.thresh = thresh
@@ -29,7 +28,6 @@ class PCK(nn.Module):
         total_joints = num_views * (joints_3d_valid_batch == 1).sum()
         return detected, total_joints
 """
-
 
 class PCK(nn.Module):
     """

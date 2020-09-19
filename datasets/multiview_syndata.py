@@ -51,7 +51,6 @@ class MultiView_SynData(td.Dataset):
         self.camera_names = []
         self.cameras = {}
         self.len = 0
-        self.with_2d_gt = with_2d_gt
 
         self.invalid_jnts = () if invalid_joints is None else invalid_joints
 
@@ -114,9 +113,9 @@ class MultiView_SynData(td.Dataset):
                         cval=(0, 255), # if the mode is constant, then use a random brightness for the newly created pixels
                         mode='constant' # use any available mode to fill newly created pixels, see API or scikit-image for which modes are available
                     )),
-                    sometimes(iaa.AdditiveGaussianNoise(scale=0.5*255, per_channel=0.5)),
+                    sometimes(iaa.AdditiveGaussianNoise(scale=0.5*2, per_channel=0.5)),
                     sometimes(iaa.GaussianBlur(sigma=(1.0, 5.0))),
-                    sometimes(iaa.ContrastNormalization((0.5, 2.0), per_channel=0.5)) # improve or worsen the contrast
+                    sometimes(iaa.ContrastNormalization((0.8, 1.25), per_channel=0.5)) # improve or worsen the contrast
                 ],
                 random_order=True
             )
@@ -181,21 +180,21 @@ class MultiView_SynData(td.Dataset):
 
         return data
 
-    def augment(images, keypts_2d):
-        images_np = torch.from_numpy(images)
+    def augment(self, images, keypts_2d):
+        images_np = images.numpy()
         images_np = np.moveaxis(images_np, 1, -1) # num_views x C x H x W -> num_views x H x W x C
-        keypts_2d_np = torch.from_numpy(keypts_2d) # num_views x num_joints x 2
+        keypts_2d_np = keypts_2d.numpy() # num_views x num_joints x 2
         #images_np = images_np[..., (2, 1, 0)] # BGR -> RGB
         #images_np = np.clip(255 * (images_np * visualize.IMAGENET_STD + visualize.IMAGENET_MEAN), 0, 255).astype(np.uint8) # denormalize
         images_np_aug = np.zeros(shape=images_np.shape)
         keypts_2d_np_aug = np.zeros(shape=keypts_2d_np.shape)
         num_views = images.shape[0]
         for view_idx in range(num_views):
-            img, k = self.aug(image=np.expand_dims(images_np[view_idx] ,axis=0), \
+            img, k = self.aug(image=images_np[view_idx], \
                               keypoints=np.expand_dims(keypts_2d_np[view_idx], axis=0))
-            images_np_aug[view_idx, :, :, :] = img.squeeze(0)
+            images_np_aug[view_idx, :, :, :] = img
             keypts_2d_np_aug[view_idx, :, :] = k.squeeze(0)
-        images_np_aug = np.moveaxis(images_np_aug, 1, -1) # num_views x H x W x C -> num_views x C x H x W
+        images_np_aug = np.moveaxis(images_np_aug, -1, 1) # num_views x H x W x C -> num_views x C x H x W
         images_aug = torch.from_numpy(images_np_aug)
         keypts_2d_aug = torch.from_numpy(keypts_2d_np_aug)
         return images_aug, keypts_2d_aug

@@ -265,7 +265,7 @@ def visualize_pred(images, proj_mats, joints_3d_gt, joints_3d_pred, joints_2d_pr
 def visualize_pred_2D(images, joints_2d_gt, joints_2d_pred, size=5):
     """visualize pose prediction for single data sample."""
     num_views = images.shape[0]
-    num_jnts = joints_3d_gt.shape[0]
+    num_jnts = joints_2d_gt.shape[1]
     fig, axes = plt.subplots(nrows=2, ncols=num_views, figsize=(num_views * size, 2 * size))
     axes = axes.reshape(2, num_views)
 
