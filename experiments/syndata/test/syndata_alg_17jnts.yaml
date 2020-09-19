@@ -63,7 +63,7 @@ dataset:
     retain_every_n_frames: 1
 
   test:
-    batch_size: 4
+    batch_size: 16
     
     with_damaged_actions: true
     undistort_images: true

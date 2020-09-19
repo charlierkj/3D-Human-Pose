@@ -10,6 +10,7 @@ from datetime import datetime
 from PIL import Image
 import yaml
 
+import matplotlib.pyplot as plt
 from itertools import cycle
 from tensorboardX import SummaryWriter
 
@@ -83,12 +84,28 @@ def train_one_epoch_ssl(model, syn_train_loader, h36m_train_loader, criterion, m
         h36m_joints_3d_pred, h36m_joints_2d_pred, h36m_heatmaps_pred, h36m_confidences_pred = model(h36m_images_batch, h36m_proj_mats_batch)
 
         pseudo_labels = np.load("pseudo_labels/human36m_train.npy", allow_pickle=True).item() # load pseudo labels
-        p = 0.2 * (e // 2 + 1) # percentage
+        p = 0.2 * (e // 10 + 1) # percentage
         score_thresh = consistency.get_score_thresh(pseudo_labels, p)
         h36m_joints_2d_gt_batch, h36m_joints_2d_valid_batch = \
                                  consistency.get_pseudo_labels(pseudo_labels, h36m_indexes, h36m_images_batch.shape[1], score_thresh)
         h36m_joints_2d_gt_batch = h36m_joints_2d_gt_batch.to(device)
         h36m_joints_2d_valid_batch = h36m_joints_2d_valid_batch.to(device)
+
+        """
+        # debug
+        if iter_idx == 0:
+            for batch_idx in range(h36m_joints_2d_gt_batch.shape[0]):
+                for view_idx in range(h36m_joints_2d_gt_batch.shape[1]):
+                    for j in range(h36m_joints_2d_gt_batch.shape[2]):
+                        plt.imshow(h36m_images_batch[batch_idx, view_idx, 0, :, :].detach().cpu().numpy())
+                        plt.scatter(h36m_joints_2d_gt_batch[batch_idx, view_idx, j, 0].detach().cpu().numpy(), \
+                                h36m_joints_2d_gt_batch[batch_idx, view_idx, j, 1].detach().cpu().numpy(), \
+                                s=10, color="red")
+                        plt.xlabel("%s" \
+                                % h36m_joints_2d_valid_batch[batch_idx, view_idx, j, 0].detach().cpu().numpy())
+                        plt.savefig("hm/%d_%d_%d.png" % (batch_idx, view_idx, j))
+                        plt.close()
+        """
 
         # use HeatmapMSELoss_2d, hardcoded
         heatmap_loss_2d = HeatmapMSELoss_2d(config)
@@ -225,12 +242,9 @@ def ssl_train(config, model, syn_train_loader, h36m_train_loader, val_loader, cr
 
     for e in range(start_epoch, epochs):
         # generate pseudo labels
-        if e % 2 == 0:
-            if e == 0:
-                pass
-            else:
-                consistency.generate_pseudo_labels(config, model, h36m_train_loader, device, \
-                        num_tfs=5)
+        if e % 10 == 0:
+            consistency.generate_pseudo_labels(config, model, h36m_train_loader, device, \
+                    num_tfs=5)
         
         # train for one epoch
         train_loss_syn, train_acc_syn, train_error_syn, \

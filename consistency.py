@@ -3,6 +3,7 @@ import argparse
 import numpy as np
 import torch
 import torchgeometry as tgm
+import cv2
 import matplotlib.pyplot as plt
 
 from utils import op, cfg
@@ -67,6 +68,10 @@ def consistency_ensemble(model, images_batch, proj_mats_batch, num_tfs=4):
             image_center[..., 1] = image_shape[0] / 2 # y
             scale = (1 + sf * torch.randn(batch_size * num_views)).clamp(1 - sf, 1 + sf) # scale
             angle = (rf * torch.randn(batch_size * num_views)).clamp(-2 * rf, 2 * rf) # rotation angle
+            # scale = torch.ones(batch_size * num_views)
+            # angle = [0, -60, -30, 30, 60][i] * torch.ones(batch_size * num_views)
+            # scale = [1, 0.75, 0.88, 1.12, 1.25][i] * torch.ones(batch_size * num_views)
+            # angle = torch.zeros(batch_size * num_views)
 
             M = tgm.get_rotation_matrix2d(image_center, angle, scale) # transform
             M = M.to(images_expanded.device)
@@ -113,7 +118,22 @@ def consistency_ensemble(model, images_batch, proj_mats_batch, num_tfs=4):
     # convert back to numpy
     joints_2d_pred = joints_2d_pred.detach().cpu().numpy() # batch_size x num_views x num_joints x 2
     scores_pred = scores_pred.detach().cpu().numpy() # batch_size x num_views x num_joints
-    
+
+    """
+    # debug
+    for batch_idx in range(batch_size):
+        for view_idx in range(num_views):
+            for j in range(num_joints):
+                plt.imshow(images_batch[batch_idx, view_idx, 0, :, :].detach().cpu().numpy())
+                hm = heatmaps_pred.view(batch_size, num_views, num_joints, *heatmap_shape)[batch_idx, view_idx, j, :, :]
+                hm_resized = cv2.resize(hm.detach().cpu().numpy(), (image_shape[1], image_shape[0]))
+                plt.imshow(hm_resized, alpha=0.5)
+                plt.scatter(joints_2d_pred[batch_idx, view_idx, j, 0], joints_2d_pred[batch_idx, view_idx, j, 1], \
+                        s=2, color="red")
+                plt.xlabel("score=%f" % scores_pred[batch_idx, view_idx, j])
+                plt.savefig("hm/%d_%d_%d.png"%(batch_idx, view_idx, j))
+                plt.close()
+    """
     return joints_2d_pred, scores_pred
 
 
@@ -147,7 +167,7 @@ def generate_pseudo_labels(config, model, h36m_loader, device, \
     model.eval()
     with torch.no_grad():
         for iter_idx, (images_batch, proj_mats_batch, joints_3d_gt_batch, joints_3d_valid_batch, indexes) in enumerate(h36m_loader):
-            # if iter_idx > 5:
+            # if iter_idx > 1:
             #     break
             # print(iter_idx)
             if images_batch is None:
