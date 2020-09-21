@@ -235,7 +235,10 @@ def human36m_prepare_batch(batch):
     proj_matricies_batch = torch.stack([torch.stack([torch.from_numpy(camera.projection) for camera in camera_batch], dim=0) for camera_batch in batch['cameras']], dim=0).transpose(1, 0)  # shape (batch_size, n_views, 3, 4)
     proj_matricies_batch = proj_matricies_batch.float()
 
-    return images_batch, proj_matricies_batch, keypoints_3d_batch_gt, keypoints_3d_validity_batch_gt, batch["indexes"]
+    # 2D keypoints
+    keypoints_2d_batch_gt = visualize.proj_to_2D_batch(proj_matricies_batch, keypoints_3d_batch_gt)
+
+    return images_batch, proj_matricies_batch, keypoints_3d_batch_gt, keypoints_3d_validity_batch_gt, keypoints_2d_batch_gt, batch["indexes"]
 
 
 def human36m_loader(dataset, batch_size=1, shuffle=False, num_workers=4):
