@@ -1,6 +1,7 @@
 import numpy as np
 import torch
 
+from datasets.human36m import Human36MMultiViewDataset
 import datasets.utils as datasets_utils
 from models.loss import KeypointsL2Loss
 from models.metric import PCK, PCKh
@@ -70,7 +71,7 @@ def eval_pseudo_labels(): # hardcoded
         crop=True,
     )
     h36m_train_loader = datasets_utils.human36m_loader(h36m_train_set, \
-                                                       batch_size=4, \
+                                                       batch_size=64, \
                                                        shuffle=False, \
                                                        num_workers=4)
 
@@ -81,7 +82,8 @@ def eval_pseudo_labels(): # hardcoded
     total_joints = 0
     total_detected_pck = 0
     total_detected_pckh = 0
-    for iter_idx, (images_batch, proj_mats_batch, joints_3d_gt_batch, joints_3d_valid_batch, joints_2d_gt_batch, indexes) in enumerate(joint_loader):
+    for iter_idx, (images_batch, proj_mats_batch, joints_3d_gt_batch, joints_3d_valid_batch, joints_2d_gt_batch, indexes) in enumerate(h36m_train_loader):
+        print(iter_idx)
         if images_batch is None:
             continue
 

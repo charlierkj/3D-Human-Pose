@@ -46,7 +46,7 @@ class PCK(nn.Module):
         # print(torso_diam)
         diff = joints_2d_pred - joints_2d_gt_batch
         dist = torch.norm(diff, dim=-1) # batch_size x num_views x num_joints
-        detected = (dist < self.thresh * torso_diam).sum(dtype=torch.float32)
+        detected = ((dist < self.thresh * torso_diam) * joints_2d_valid_batch.squeeze(-1)).sum(dtype=torch.float32)
         # total_joints = num_views * (joints_3d_valid_batch == 1).sum()
         total_joints = (joints_2d_valid_batch == 1).sum()
         return detected, total_joints
@@ -61,13 +61,12 @@ class PCKh(nn.Module):
         super(PCKh, self).__init__()
         self.thresh = thresh
 
-    def forward(self, joints_2d_pred, proj_mats_batch, joints_3d_gt_batch, joints_2d_valid_batch):
+    def forward(self, joints_2d_pred, joints_2d_gt_batch, joints_2d_valid_batch):
         num_views = joints_2d_pred.shape[1]
-        joints_2d_gt_batch = visualize.proj_to_2D_batch(proj_mats_batch, joints_3d_gt_batch)
         head_length = torch.norm(joints_2d_gt_batch[:, :, 9, :] - joints_2d_gt_batch[:, :, 16, :], dim=-1, keepdim=True) # batch_size x num_views x 1
         diff = joints_2d_pred - joints_2d_gt_batch
         dist = torch.norm(diff, dim=-1) # batch_size x num_views x num_joints
-        detected = (dist < self.thresh * head_length).sum(dtype=torch.float32)
+        detected = ((dist < self.thresh * head_length) * joints_2d_valid_batch.squeeze(-1)).sum(dtype=torch.float32)
         # total_joints = num_views * (joints_3d_valid_batch == 1).sum()
         total_joints = (joints_2d_valid_batch == 1).sum()
         return detected, total_joints
