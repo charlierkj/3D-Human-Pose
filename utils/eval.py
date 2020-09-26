@@ -49,7 +49,8 @@ def eval_one_batch(metric, joints_3d_pred, joints_2d_pred, \
     if isinstance(metric, PCK):
         #detected, num_samples = metric(joints_2d_pred, proj_mats_batch, \
         #                               joints_3d_gt_batch, joints_3d_valid_batch)
-        detected, num_samples = metric(joints_2d_pred, joints_2d_gt_batch, joints_3d_valid_batch)
+        joints_2d_valid_batch = torch.ones(*joints_2d_pred.shape[0:3], 1).to(joints_2d_pred.device)
+        detected, num_samples = metric(joints_2d_pred, joints_2d_gt_batch, joints_2d_valid_batch)
     elif isinstance(metric, KeypointsL2Loss):
         error = metric(joints_3d_pred, joints_3d_gt_batch, joints_3d_valid_batch).item()
         num_samples = joints_3d_pred.shape[0]

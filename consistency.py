@@ -166,7 +166,7 @@ def generate_pseudo_labels(config, model, h36m_loader, device, \
     print("Estimated number of iterations is: %d" % round(h36m_loader.dataset.__len__() / h36m_loader.batch_size))
     model.eval()
     with torch.no_grad():
-        for iter_idx, (images_batch, proj_mats_batch, joints_3d_gt_batch, joints_3d_valid_batch, indexes) in enumerate(h36m_loader):
+        for iter_idx, (images_batch, proj_mats_batch, joints_3d_gt_batch, joints_3d_valid_batch, joints_2d_gt_batch, indexes) in enumerate(h36m_loader):
             # if iter_idx > 1:
             #     break
             # print(iter_idx)
