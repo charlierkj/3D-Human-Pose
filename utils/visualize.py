@@ -35,6 +35,24 @@ CONNECTIVITY_HUMAN36M = [
     (14, 15)
     ]
 
+CONNECTIVITY_32 = CONNECTIVITY_HUMAN36M + [
+                      (17, 21),
+                      (18, 20),
+                      (16, 19),
+                      (10, 22),
+                      (10, 23),
+                      (10, 24),
+                      (23, 24),
+                      (15, 25),
+                      (15, 26),
+                      (15, 27),
+                      (25, 26),
+                      (0, 28),
+                      (28, 29),
+                      (5, 31),
+                      (31, 30)
+                      ]
+
 CONNECTIVITY_23 = CONNECTIVITY_HUMAN36M + \
     [
     (0, 17),
@@ -107,6 +125,8 @@ def load_connectivity(num_joints):
         connectivity = CONNECTIVITY_23
     elif num_joints == 27:
         connectivity = CONNECTIVITY_27
+    elif num_joints == 32:
+        connectivity = CONNECTIVITY_32
     elif num_joints == 37:
         connectivity = CONNECTIVITY_37
     elif num_joints == 47:

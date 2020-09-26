@@ -16,7 +16,7 @@ from tensorboardX import SummaryWriter
 
 from utils import cfg
 from models.triangulation import AlgebraicTriangulationNet
-from models.loss import HeatmapMSELoss, HeatmapMSELoss_2d, KeypointsMSELoss, KeypointsMSESmoothLoss, KeypointsMAELoss, KeypointsL2Loss
+from models.loss import HeatmapMSELoss, KeypointsMSELoss, KeypointsMSESmoothLoss, KeypointsMAELoss, KeypointsL2Loss
 from models.metric import PCK, PCKh, PCK3D
 from datasets.multiview_syndata import MultiView_SynData
 from datasets.human36m import Human36MMultiViewDataset
@@ -51,8 +51,9 @@ def train_one_epoch_ssl(model, syn_train_loader, h36m_train_loader, criterion, m
     # jointly training
     joint_loader = zip(syn_train_loader, h36m_train_loader)
 
-    for iter_idx, ((syn_images_batch, syn_proj_mats_batch, syn_joints_3d_gt_batch, syn_joints_3d_valid_batch, syn_info_batch), \
-                   (h36m_images_batch, h36m_proj_mats_batch, h36m_joints_3d_gt_batch, h36m_joints_3d_valid_batch, h36m_indexes))in enumerate(joint_loader):
+    for iter_idx, ((syn_images_batch, syn_proj_mats_batch, syn_joints_3d_gt_batch, syn_joints_3d_valid_batch, syn_joints_2d_gt_batch, syn_info_batch), \
+                   (h36m_images_batch, h36m_proj_mats_batch, h36m_joints_3d_gt_batch, h36m_joints_3d_valid_batch, h36m_joints_2d_gt_batch, h36m_indexes)) \
+                   in enumerate(joint_loader):
 
         opt.zero_grad()
 
@@ -64,11 +65,12 @@ def train_one_epoch_ssl(model, syn_train_loader, h36m_train_loader, criterion, m
         syn_proj_mats_batch = syn_proj_mats_batch.to(device)
         syn_joints_3d_gt_batch = syn_joints_3d_gt_batch.to(device)
         syn_joints_3d_valid_batch = syn_joints_3d_valid_batch.to(device)
+        syn_joints_2d_gt_batch = syn_joints_2d_gt_batch.to(device)
 
         syn_joints_3d_pred, syn_joints_2d_pred, syn_heatmaps_pred, syn_confidences_pred = model(syn_images_batch, syn_proj_mats_batch)
 
         if isinstance(criterion, HeatmapMSELoss):
-            syn_loss = criterion(syn_heatmaps_pred, syn_proj_mats_batch, syn_joints_3d_gt_batch, syn_joints_3d_valid_batch)
+            syn_loss = criterion(syn_heatmaps_pred, syn_joints_2d_gt_batch)
         else:
             syn_loss = criterion(syn_joints_3d_pred, syn_joints_3d_gt_batch, syn_joints_3d_valid_batch)
 
@@ -80,15 +82,16 @@ def train_one_epoch_ssl(model, syn_train_loader, h36m_train_loader, criterion, m
         h36m_proj_mats_batch = h36m_proj_mats_batch.to(device)
         h36m_joints_3d_gt_batch = h36m_joints_3d_gt_batch.to(device)
         h36m_joints_3d_valid_batch = h36m_joints_3d_valid_batch.to(device)
+        h36m_joints_2d_gt_batch = h36m_joints_2d_gt_batch.to(device)
 
         h36m_joints_3d_pred, h36m_joints_2d_pred, h36m_heatmaps_pred, h36m_confidences_pred = model(h36m_images_batch, h36m_proj_mats_batch)
 
         pseudo_labels = np.load("pseudo_labels/human36m_train.npy", allow_pickle=True).item() # load pseudo labels
         p = 0.2 * (e // 10 + 1) # percentage
         score_thresh = consistency.get_score_thresh(pseudo_labels, p)
-        h36m_joints_2d_gt_batch, h36m_joints_2d_valid_batch = \
+        h36m_joints_2d_pl_batch, h36m_joints_2d_valid_batch = \
                                  consistency.get_pseudo_labels(pseudo_labels, h36m_indexes, h36m_images_batch.shape[1], score_thresh)
-        h36m_joints_2d_gt_batch = h36m_joints_2d_gt_batch.to(device)
+        h36m_joints_2d_pl_batch = h36m_joints_2d_pl_batch.to(device)
         h36m_joints_2d_valid_batch = h36m_joints_2d_valid_batch.to(device)
 
         """
@@ -107,9 +110,10 @@ def train_one_epoch_ssl(model, syn_train_loader, h36m_train_loader, criterion, m
                         plt.close()
         """
 
-        # use HeatmapMSELoss_2d, hardcoded
-        heatmap_loss_2d = HeatmapMSELoss_2d(config)
-        h36m_loss = heatmap_loss_2d(h36m_heatmaps_pred, h36m_joints_2d_gt_batch, h36m_joints_2d_valid_batch)
+        if isinstance(criterion, HeatmapMSELoss):
+            h36m_loss = criterion(h36m_heatmaps_pred, h36m_joints_2d_pl_batch, h36m_joints_2d_valid_batch)
+        else:
+            raise ValueError("Please use 2D Heatmap Loss for training on Human3.6M!")
 
         # optimize
         loss = syn_loss + gamma * h36m_loss
@@ -118,7 +122,8 @@ def train_one_epoch_ssl(model, syn_train_loader, h36m_train_loader, criterion, m
 
         # evaluate on syndata
         syn_detected, syn_error, syn_num_samples = utils_eval.eval_one_batch(metric, syn_joints_3d_pred, syn_joints_2d_pred, \
-                                                                         syn_proj_mats_batch, syn_joints_3d_gt_batch, syn_joints_3d_valid_batch)
+                                                                             syn_proj_mats_batch, syn_joints_3d_gt_batch, syn_joints_3d_valid_batch, \
+                                                                             syn_joints_2d_gt_batch)
 
         total_train_loss_syn += syn_num_samples * syn_loss.item()
         total_detected_syn += syn_detected
@@ -127,7 +132,8 @@ def train_one_epoch_ssl(model, syn_train_loader, h36m_train_loader, criterion, m
 
         # evaluate on h36m
         h36m_detected, h36m_error, h36m_num_samples = utils_eval.eval_one_batch(metric, h36m_joints_3d_pred, h36m_joints_2d_pred, \
-                                                                            h36m_proj_mats_batch, h36m_joints_3d_gt_batch, h36m_joints_3d_valid_batch)
+                                                                                h36m_proj_mats_batch, h36m_joints_3d_gt_batch, h36m_joints_3d_valid_batch, \
+                                                                                h36m_joints_2d_gt_batch)
 
         total_train_loss_h36m += h36m_num_samples * h36m_loss.item()
         total_detected_h36m += h36m_detected
@@ -162,11 +168,13 @@ def train_one_epoch_ssl(model, syn_train_loader, h36m_train_loader, criterion, m
             vis_iter = iter_idx
             # visualize first sample in batch
             if writer is not None:
-                joints_vis_syn = visualize.visualize_pred(syn_images_batch[0], syn_proj_mats_batch[0], syn_joints_3d_gt_batch[0], \
-                                                          syn_joints_3d_pred[0], syn_joints_2d_pred[0])
+                # joints_vis_syn = visualize.visualize_pred(syn_images_batch[0], syn_proj_mats_batch[0], syn_joints_3d_gt_batch[0], \
+                #                                           syn_joints_3d_pred[0], syn_joints_2d_pred[0])
+                joints_vis_syn = visualize.visualize_pred_2D(syn_images_batch[0], syn_joints_2d_gt_batch[0], syn_joints_2d_pred[0])
                 writer.add_image("joints/syndata/iter", joints_vis_syn.transpose(2, 0, 1), global_step=e*iters_per_epoch+vis_iter)
-                joints_vis_h36m = visualize.visualize_pred(h36m_images_batch[0], h36m_proj_mats_batch[0], h36m_joints_3d_gt_batch[0], \
-                                                           h36m_joints_3d_pred[0], h36m_joints_2d_pred[0])
+                # joints_vis_h36m = visualize.visualize_pred(h36m_images_batch[0], h36m_proj_mats_batch[0], h36m_joints_3d_gt_batch[0], \
+                #                                            h36m_joints_3d_pred[0], h36m_joints_2d_pred[0])
+                joints_vis_h36m = visualize.visualize_pred_2D(h36m_images_batch[0], h36m_joints_2d_gt_batch[0], h36m_joints_2d_pred[0])
                 writer.add_image("joints/h36m/iter", joints_vis_h36m.transpose(2, 0, 1), global_step=e*iters_per_epoch+vis_iter)
         
                 vis_joint = (iter_idx // vis_every_iters) % 17
@@ -302,7 +310,7 @@ if __name__ == "__main__":
     syndata_root = "../mocap_syndata/multiview_data"
     syn_train_set = MultiView_SynData(syndata_root, load_joints=config.model.backbone.num_joints, invalid_joints=(), \
                                   bbox=config.dataset.bbox, image_shape=config.dataset.image_shape, \
-                                  train=True)
+                                  train=True, with_aug=config.dataset.train.with_aug)
     syn_train_loader = datasets_utils.syndata_loader(syn_train_set, \
                                                  batch_size=config.dataset.train.batch_size, \
                                                  shuffle=config.dataset.train.shuffle, \

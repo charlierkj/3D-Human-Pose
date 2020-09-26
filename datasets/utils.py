@@ -31,6 +31,24 @@ Joints_SynData = [
     "head" #16
     ]
 
+Joints_32 = Joints_SynData + [
+    "eye_end_r", # 17
+    "mouth_r",
+    "jaw_end",
+    "mouth_l",
+    "eye_end_l",
+    "thumb_02_r", # 22
+    "index_01_r",
+    "pinky_01_r",
+    "pinky_01_l",
+    "index_01_l",
+    "thumb_02_l",
+    "ball_r", # 28
+    "foot_end_r",
+    "foot_end_l",
+    "ball_l"
+    ]
+
 Joints_23 = Joints_SynData + [
     "ball_r", #17
     "ball_l", #18
@@ -95,6 +113,8 @@ def get_joints_name(num_joints):
         joints_name = Joints_23
     elif num_joints == 27:
         joints_name = Joints_27
+    elif num_joints == 32:
+        joints_name = Joints_32
     elif num_joints == 37:
         joints_name = Joints_37
     elif num_joints == 47:
