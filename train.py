@@ -27,7 +27,7 @@ def load_pretrained_model(model, config, init_joints=17):
     device = next(model.parameters()).device
     model_state_dict = model.state_dict()
 
-    pretrained_state_dict = torch.load(config.model.checkpoint)
+    pretrained_state_dict = torch.load(config.model.checkpoint, map_location=torch.device(int(config.gpu_id)))
     # for key in list(pretrained_state_dict.keys()):
     #     new_key = key.replace("module.", "")
     #     pretrained_state_dict[new_key] = pretrained_state_dict.pop(key)
