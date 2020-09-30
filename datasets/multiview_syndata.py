@@ -19,10 +19,15 @@ import utils.visualize as visualize
 
 class MultiView_SynData(td.Dataset):
 
-    def __init__(self, path, num_camera=4, \
-                 load_joints=17, invalid_joints=(), \
-                 bbox=None, image_shape=[384, 384], \
-                 train=False, test=False, \
+    def __init__(self,
+                 path="../mocap_syndata/multiview_data",
+                 num_camera=4,
+                 load_joints=17,
+                 invalid_joints=(),
+                 bbox=None,
+                 image_shape=[384, 384], 
+                 train=False,
+                 test=False, 
                  with_aug=False):
         """
         invalid_joints: tuple of indices for invalid joints; associated joints will not be used in evaluation.
