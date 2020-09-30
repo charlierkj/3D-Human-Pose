@@ -8,7 +8,6 @@ import torch
 from .misc import *
 from .imutils import *
 import cv2
-import imutils
 
 
 def color_normalize(x, mean, std):
@@ -191,7 +190,7 @@ def crop(img, center, scale, res, rot=0):
         # Remove padding
         #new_img = imrotate(new_img, rot)
         #new_img= imutils.rotate_bound(new_img,-rot) #For bounded rotation
-        new_img= imutils.rotate(new_img,rot) 
+        new_img= scipy.misc.imrotate(new_img, rot) 
         new_img = new_img[pad:-pad, pad:-pad]
 
     new_img = im_to_torch(cv2.resize(new_img, dsize=(res[0],res[1]), interpolation=cv2.INTER_LINEAR))
