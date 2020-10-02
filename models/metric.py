@@ -18,11 +18,13 @@ class PCK(nn.Module):
 
     def forward(self, joints_2d_pred, joints_2d_gt_batch, joints_2d_valid_batch):
         num_views = joints_2d_pred.shape[1]
+        num_joints = min(joints_2d_pred.shape[2], joints_2d_gt_batch.shape[2])
+        joints_2d_valid_batch = joints_2d_valid_batch[:, :, 0:num_joints, :]
         bbox_w = joints_2d_gt_batch[..., 0].max(-1, keepdim=True)[0] - joints_2d_gt_batch[..., 0].min(-1, keepdim=True)[0] # batch_size x num_views x 1
         bbox_h = joints_2d_gt_batch[..., 1].max(-1, keepdim=True)[0] - joints_2d_gt_batch[..., 1].min(-1, keepdim=True)[0] # batch_size x num_views x 1
         torso_diam = torch.max(bbox_w, bbox_h) # batch_size x num_views x 1
         # print(torso_diam)
-        diff = joints_2d_pred - joints_2d_gt_batch
+        diff = joints_2d_pred[:, :, 0:num_joints, :] - joints_2d_gt_batch[:, :, 0:num_joints, :]
         dist = torch.norm(diff, dim=-1) # batch_size x num_views x num_joints
         detected = ((dist < self.thresh * torso_diam) * joints_2d_valid_batch.squeeze(-1)).sum(dtype=torch.float32)
         # total_joints = num_views * (joints_3d_valid_batch == 1).sum()
@@ -41,8 +43,10 @@ class PCKh(nn.Module):
 
     def forward(self, joints_2d_pred, joints_2d_gt_batch, joints_2d_valid_batch):
         num_views = joints_2d_pred.shape[1]
+        num_joints = min(joints_2d_pred.shape[2], joints_2d_gt_batch.shape[2])
+        joints_2d_valid_batch = joints_2d_valid_batch[:, :, 0:num_joints, :]
         head_length = torch.norm(joints_2d_gt_batch[:, :, 9, :] - joints_2d_gt_batch[:, :, 16, :], dim=-1, keepdim=True) # batch_size x num_views x 1
-        diff = joints_2d_pred - joints_2d_gt_batch
+        diff = joints_2d_pred[:, :, 0:num_joints, :] - joints_2d_gt_batch[:, :, 0:num_joints, :]
         dist = torch.norm(diff, dim=-1) # batch_size x num_views x num_joints
         detected = ((dist < self.thresh * head_length) * joints_2d_valid_batch.squeeze(-1)).sum(dtype=torch.float32)
         # total_joints = num_views * (joints_3d_valid_batch == 1).sum()

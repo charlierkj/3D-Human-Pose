@@ -137,7 +137,7 @@ def consistency_ensemble(model, images_batch, proj_mats_batch, num_tfs=4):
     return joints_2d_pred, scores_pred
 
 
-def generate_pseudo_labels(config, model, h36m_loader, device, \
+def generate_pseudo_labels(config, model, real_loader, device, \
                            num_tfs=4, test=False):
     num_joints = config.model.backbone.num_joints
 
@@ -160,13 +160,13 @@ def generate_pseudo_labels(config, model, h36m_loader, device, \
     retval['labels'] = []
 
     # re-configure data loader
-    h36m_loader.shuffle=False
+    real_loader.shuffle=False
 
     print("Generating pseudo labels...")
-    print("Estimated number of iterations is: %d" % round(h36m_loader.dataset.__len__() / h36m_loader.batch_size))
+    print("Estimated number of iterations is: %d" % round(real_loader.dataset.__len__() / real_loader.batch_size))
     model.eval()
     with torch.no_grad():
-        for iter_idx, (images_batch, proj_mats_batch, joints_3d_gt_batch, joints_3d_valid_batch, joints_2d_gt_batch, indexes) in enumerate(h36m_loader):
+        for iter_idx, (images_batch, _, _, _, _, indexes) in enumerate(real_loader):
             # if iter_idx > 1:
             #     break
             # print(iter_idx)
@@ -174,15 +174,12 @@ def generate_pseudo_labels(config, model, h36m_loader, device, \
                 continue
                     
             images_batch = images_batch.to(device)
-            proj_mats_batch = proj_mats_batch.to(device)
-            joints_3d_gt_batch = joints_3d_gt_batch.to(device)
-            joints_3d_valid_batch = joints_3d_valid_batch.to(device)
 
             batch_size = images_batch.shape[0]
             num_views = images_batch.shape[1]
             assert batch_size == len(indexes)
             
-            joints_2d_pred, scores_pred = consistency_ensemble(model, images_batch, proj_mats_batch, num_tfs=num_tfs)
+            joints_2d_pred, scores_pred = consistency_ensemble(model, images_batch, None, num_tfs=num_tfs)
 
             # fill in pseudo labels
             for batch_idx, data_idx in enumerate(indexes):
@@ -203,16 +200,16 @@ def generate_pseudo_labels(config, model, h36m_loader, device, \
     save_folder = "pseudo_labels"
     os.makedirs(save_folder, exist_ok=True)
     if test:
-        write_path = os.path.join(save_folder, "human36m_test.npy")
+        write_path = os.path.join(save_folder, "%s_test.npy" % config.dataset.type)
     else:
-        write_path = os.path.join(save_folder, "human36m_train.npy")
+        write_path = os.path.join(save_folder, "%s_train.npy" % config.dataset.type)
 
     print("Saving pseudo labels to %s" % write_path)
     np.save(write_path, retval)
     print("Done.")
 
     # configure back data loader
-    h36m_loader.shuffle = config.dataset.train.shuffle
+    real_loader.shuffle = config.dataset.train.shuffle
 
 
 

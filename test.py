@@ -230,7 +230,7 @@ def syndata_test(config, model, dataloader, device, save_folder, \
     #     json.dump(metrics, metrics_json)
 
 
-def human36m_test(config, model, dataloader, device, save_folder, \
+def real_test(config, model, dataloader, device, save_folder, \
                   save_img=False, show_img=False, make_gif=False, make_vid=False):
     saveimg_per_iter = 10
 
@@ -274,16 +274,18 @@ def human36m_test(config, model, dataloader, device, save_folder, \
         total_detected_pck3d = 0
         total_error = 0
         
-        for iter_idx, (images_batch, proj_mats_batch, joints_3d_gt_batch, joints_3d_valid_batch, indexes) in enumerate(dataloader):
+        for iter_idx, (images_batch, proj_mats_batch, joints_3d_gt_batch, joints_3d_valid_batch, joints_2d_gt_batch, indexes) in enumerate(dataloader):
             # print(iter_idx)
 
             if images_batch is None:
                 continue
 
             images_batch = images_batch.to(device)
-            proj_mats_batch = proj_mats_batch.to(device)
-            joints_3d_gt_batch = joints_3d_gt_batch.to(device)
-            joints_3d_valid_batch = joints_3d_valid_batch.to(device)
+
+            if None in proj_mats_batch:
+                proj_mats_batch = proj_mats_batch.to(device)
+                joints_3d_gt_batch = joints_3d_gt_batch.to(device)
+                joints_3d_valid_batch = joints_3d_valid_batch.to(device)
 
             batch_size = images_batch.shape[0]
 

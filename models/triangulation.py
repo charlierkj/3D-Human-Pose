@@ -70,19 +70,23 @@ class AlgebraicTriangulationNet(nn.Module):
         keypoints_2d_transformed[:, :, :, 1] = keypoints_2d[:, :, :, 1] * (image_shape[0] / heatmap_shape[0])
         keypoints_2d = keypoints_2d_transformed
 
-        # triangulate
-        try:
-            keypoints_3d = multiview.triangulate_batch_of_points(
-                proj_matricies, keypoints_2d,
-                confidences_batch=alg_confidences
-            )
-        except RuntimeError as e:
-            print("Error: ", e)
+        # if not projection matrices are provided, only infer in 2D
+        if proj_matricies is None:
+            keypoints_3d = None
+        else:
+            # triangulate
+            try:
+                keypoints_3d = multiview.triangulate_batch_of_points(
+                    proj_matricies, keypoints_2d,
+                    confidences_batch=alg_confidences
+                )
+            except RuntimeError as e:
+                print("Error: ", e)
 
-            print("confidences =", confidences_batch_pred)
-            print("proj_matricies = ", proj_matricies)
-            print("keypoints_2d_batch_pred =", keypoints_2d_batch_pred)
-            exit()
+                print("confidences =", confidences_batch_pred)
+                print("proj_matricies = ", proj_matricies)
+                print("keypoints_2d_batch_pred =", keypoints_2d_batch_pred)
+                exit()
 
         return keypoints_3d, keypoints_2d, heatmaps, alg_confidences
 

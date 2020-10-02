@@ -1,0 +1,83 @@
+title: "human36m_alg"
+kind: "human36m"
+vis_freq: 20
+vis_n_elements: 10
+gpu_id: 0
+
+opt:
+  criterion: "Heatmap"
+  mse_smooth_threshold: 400
+
+  n_objects_per_epoch: 15000
+  n_epochs: 10
+
+  lr: 0.0001
+
+  scale_keypoints_3d: 0.1
+
+model:
+  name: "alg"
+
+  init_weights: true
+  # checkpoint: "./data/pretrained/human36m/human36m_alg_10-04-2019/checkpoints/0060/weights.pth"
+  checkpoint: "./logs/exp_17jnts@19.09.2020-04.49.14/checkpoint/0019/weights.pth"
+
+  use_confidences: true
+  heatmap_multiplier: 1
+  heatmap_softmax: true
+
+  backbone:
+    name: "resnet152"
+    style: "simple"
+
+    init_weights: false
+    checkpoint: "./data/pretrained/human36m/pose_resnet_4.5_pixels_human36m.pth"
+
+    num_joints: 17
+    num_layers: 152
+
+dataset:
+  type: "mpii"
+  kind: "mpii"
+
+  data_root: "../mpii_images"
+  labels_path: "../pytorch-pose/data/mpii/mpii_annotations.json"
+
+  image_shape: [384, 384]
+  bbox: [160, 0, 1120, 960]
+
+  train:
+    batch_size: 2
+
+    with_aug: true
+      
+    with_damaged_actions: true
+    undistort_images: true
+
+    scale_bbox: 1.6
+
+    shuffle: true
+    randomize_n_views: false
+    min_n_views: null
+    max_n_views: null
+    num_workers: 4
+
+    retain_every_n_frames: 10
+
+  test:
+    batch_size: 4
+
+    with_aug: false
+    
+    with_damaged_actions: true
+    undistort_images: true
+
+    scale_bbox: 1.6
+
+    shuffle: false
+    randomize_n_views: false
+    min_n_views: null
+    max_n_views: null
+    num_workers: 4
+
+    retain_every_n_frames: 1

@@ -102,20 +102,22 @@ class Mpii(data.Dataset):
         img = load_image(img_path)  # CxHxW
 
         r = 0
-        if self.is_train:
-            s = s*torch.randn(1).mul_(sf).add_(1).clamp(1-sf, 1+sf)[0]
-            r = torch.randn(1).mul_(rf).clamp(-2*rf, 2*rf)[0] if random.random() <= 0.6 else 0
 
-            # Flip
-            if random.random() <= 0.5:
-                img = torch.from_numpy(fliplr(img.numpy())).float()
-                pts = shufflelr(pts, width=img.size(2), dataset='mpii')
-                c[0] = img.size(2) - c[0]
+        # no augmentation
+        # if self.is_train:
+        #     s = s*torch.randn(1).mul_(sf).add_(1).clamp(1-sf, 1+sf)[0]
+        #     r = torch.randn(1).mul_(rf).clamp(-2*rf, 2*rf)[0] if random.random() <= 0.6 else 0
 
-            # Color
-            img[0, :, :].mul_(random.uniform(0.8, 1.2)).clamp_(0, 1)
-            img[1, :, :].mul_(random.uniform(0.8, 1.2)).clamp_(0, 1)
-            img[2, :, :].mul_(random.uniform(0.8, 1.2)).clamp_(0, 1)
+        #     # Flip
+        #     if random.random() <= 0.5:
+        #         img = torch.from_numpy(fliplr(img.numpy())).float()
+        #         pts = shufflelr(pts, width=img.size(2), dataset='mpii')
+        #         c[0] = img.size(2) - c[0]
+
+        #     # Color
+        #     img[0, :, :].mul_(random.uniform(0.8, 1.2)).clamp_(0, 1)
+        #     img[1, :, :].mul_(random.uniform(0.8, 1.2)).clamp_(0, 1)
+        #     img[2, :, :].mul_(random.uniform(0.8, 1.2)).clamp_(0, 1)
 
         # Prepare image and groundtruth map
         inp = crop(img, c, s, [self.inp_res, self.inp_res], rot=r)
@@ -123,21 +125,26 @@ class Mpii(data.Dataset):
 
         # Generate ground truth
         tpts = pts.clone()
-        target = torch.zeros(nparts, self.out_res, self.out_res)
-        target_weight = tpts[:, 2].clone().view(nparts, 1)
+        # target = torch.zeros(nparts, self.out_res, self.out_res)
+        # target_weight = tpts[:, 2].clone().view(nparts, 1)
 
         for i in range(nparts):
             # if tpts[i, 2] > 0: # This is evil!!
             if tpts[i, 1] > 0:
                 tpts[i, 0:2] = to_torch(transform(tpts[i, 0:2]+1, c, s, [self.out_res, self.out_res], rot=r))
-                target[i], vis = draw_labelmap(target[i], tpts[i]-1, self.sigma, type=self.label_type)
-                target_weight[i, 0] *= vis
+                # target[i], vis = draw_labelmap(target[i], tpts[i]-1, self.sigma, type=self.label_type)
+                # target_weight[i, 0] *= vis
 
         # Meta info
-        meta = {'index' : index, 'center' : c, 'scale' : s,
-        'pts' : pts, 'tpts' : tpts, 'target_weight': target_weight}
+        # meta = {'index' : index, 'center' : c, 'scale' : s,
+        # 'pts' : pts, 'tpts' : tpts, 'target_weight': target_weight}
 
-        return inp, target, meta
+        # return inp, target, meta
+
+        images_batch = inp.unsqueeze(0) # 1 x 3 x height (default: 384) x width (default: 384)
+        joints_2d_gt = tpts[:, 0:2].unsqueeze(0) # 1 x num_joints (16) x 2 
+        
+        return images_batch, None, None, None, joints_2d_gt, index
 
     def __len__(self):
         if self.is_train:
