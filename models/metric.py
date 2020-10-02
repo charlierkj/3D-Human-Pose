@@ -31,7 +31,7 @@ class PCK(nn.Module):
         total_joints = (joints_2d_valid_batch == 1).sum()
         return detected, total_joints
 
-    def get_joints_validity(joints_2d_gt_batch, joints_2d_valid_batch, num_joints):
+    def get_joints_validity(self, joints_2d_gt_batch, joints_2d_valid_batch, num_joints):
         # zero-coordinate indicated invisibility
         joints_2d_gt_zero = (joints_2d_gt_batch == 0)
         joints_2d_visible = ~(joints_2d_gt_zero[:, :, :, 0] & joints_2d_gt_zero[:, :, :, 1])
@@ -63,7 +63,7 @@ class PCKh(nn.Module):
         total_joints = (joints_2d_valid_batch == 1).sum()
         return detected, total_joints
 
-    def get_joints_validity(joints_2d_gt_batch, joints_2d_valid_batch, num_joints):
+    def get_joints_validity(self, joints_2d_gt_batch, joints_2d_valid_batch, num_joints):
         # zero-coordinate indicated invisibility
         joints_2d_gt_zero = (joints_2d_gt_batch == 0)
         joints_2d_visible = ~(joints_2d_gt_zero[:, :, :, 0] & joints_2d_gt_zero[:, :, :, 1])
