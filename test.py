@@ -38,9 +38,10 @@ def test_one_epoch(model, val_loader, metric, device):
                 continue
                     
             images_batch = images_batch.to(device)
-            proj_mats_batch = proj_mats_batch.to(device)
-            joints_3d_gt_batch = joints_3d_gt_batch.to(device)
-            joints_3d_valid_batch = joints_3d_valid_batch.to(device)
+            if proj_mats_batch is not None:
+                proj_mats_batch = proj_mats_batch.to(device)
+                joints_3d_gt_batch = joints_3d_gt_batch.to(device)
+                joints_3d_valid_batch = joints_3d_valid_batch.to(device)
             joints_2d_gt_batch = joints_2d_gt_batch.to(device)
             batch_size = images_batch.shape[0]
             joints_3d_pred, joints_2d_pred, heatmaps_pred, confidences_pred = model(images_batch, proj_mats_batch)
