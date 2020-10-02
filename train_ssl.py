@@ -82,7 +82,7 @@ def train_one_epoch_ssl(config, model, syn_train_loader, real_train_loader, \
             continue
 
         real_images_batch = real_images_batch.to(device)
-        if None in real_proj_mats_batch:
+        if real_proj_mats_batch is not None:
             real_proj_mats_batch = real_proj_mats_batch.to(device)
             real_joints_3d_gt_batch = real_joints_3d_gt_batch.to(device)
             real_joints_3d_valid_batch = real_joints_3d_valid_batch.to(device)
@@ -375,11 +375,10 @@ if __name__ == "__main__":
             out_res=config.dataset.image_shape[0]//4,
             is_train=True
         )
-        real_train_loader = torch.utils.data.DataLoader(real_train_set, \
-                                                        batch_size=config.dataset.train.batch_size*4, \
-                                                        shuffle=config.dataset.train.shuffle, \
-                                                        num_workers=config.dataset.train.num_workers, \
-                                                        pin_memory=True)
+        real_train_loader = datasets_utils.mpii_loader(real_train_set, \
+                                                       batch_size=config.dataset.train.batch_size*4, \
+                                                       shuffle=config.dataset.train.shuffle, \
+                                                       num_workers=config.dataset.train.num_workers)
 
         # validating data
         val_set = Mpii(
@@ -389,11 +388,10 @@ if __name__ == "__main__":
             out_res=config.dataset.image_shape[0]//4,
             is_train=False
         )
-        val_loader = datasets_utils.human36m_loader(val_set, \
-                                                    batch_size=config.dataset.test.batch_size*4, \
-                                                    shuffle=config.dataset.test.shuffle, \
-                                                    num_workers=config.dataset.test.num_workers, \
-                                                    pin_memory=True)
+        val_loader = datasets_utils.mpii_loader(val_set, \
+                                                batch_size=config.dataset.test.batch_size*4, \
+                                                shuffle=config.dataset.test.shuffle, \
+                                                num_workers=config.dataset.test.num_workers)
         
     # configure loss
     if config.opt.criterion == "MSESmooth":

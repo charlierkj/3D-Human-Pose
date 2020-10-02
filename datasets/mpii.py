@@ -7,6 +7,7 @@ import numpy as np
 import json
 import random
 import math
+from collections import defaultdict
 
 import torch
 import torch.utils.data as data
@@ -141,10 +142,14 @@ class Mpii(data.Dataset):
 
         # return inp, target, meta
 
-        images_batch = inp.unsqueeze(0) # 1 x 3 x height (default: 384) x width (default: 384)
-        joints_2d_gt = tpts[:, 0:2].unsqueeze(0) # 1 x num_joints (16) x 2 
+        image = inp.unsqueeze(0) # 1 x 3 x height (default: 384) x width (default: 384)
+        joints_2d_gt = tpts[:, 0:2].unsqueeze(0) # 1 x num_joints (16) x 2
+        data = defaultdict(list)
+        data['image'] = image
+        data['joints_2d_gt'] = joints_2d_gt
+        data['index'] = index
         
-        return images_batch, None, None, None, joints_2d_gt, index
+        return data
 
     def __len__(self):
         if self.is_train:

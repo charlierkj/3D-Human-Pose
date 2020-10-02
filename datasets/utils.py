@@ -208,31 +208,31 @@ def syndata_loader(dataset, batch_size=1, shuffle=False, num_workers=4):
 # Human3.6M Dataset
 # Reference: https://github.com/karfly/learnable-triangulation-pytorch
 def human36m_collate_fn(items):
-        #items = list(filter(lambda x: x is not None, items))
-        items = list(x for x in items if x is not None)
-        if len(items) == 0:
-            print("All items in batch are None")
-            return None
+    #items = list(filter(lambda x: x is not None, items))
+    items = list(x for x in items if x is not None)
+    if len(items) == 0:
+        print("All items in batch are None")
+        return None
 
-        batch = dict()
-        total_n_views = min(len(item['images']) for item in items)
+    batch = dict()
+    total_n_views = min(len(item['images']) for item in items)
 
-        indexes = np.arange(total_n_views)
+    indexes = np.arange(total_n_views)
     
-        batch['images'] = np.stack([np.stack([item['images'][i] for item in items], axis=0) for i in indexes], axis=0).swapaxes(0, 1)
-        batch['detections'] = np.array([[item['detections'][i] for item in items] for i in indexes]).swapaxes(0, 1)
-        batch['cameras'] = [[item['cameras'][i] for item in items] for i in indexes]
+    batch['images'] = np.stack([np.stack([item['images'][i] for item in items], axis=0) for i in indexes], axis=0).swapaxes(0, 1)
+    batch['detections'] = np.array([[item['detections'][i] for item in items] for i in indexes]).swapaxes(0, 1)
+    batch['cameras'] = [[item['cameras'][i] for item in items] for i in indexes]
 
-        batch['keypoints_3d'] = [item['keypoints_3d'] for item in items]
-        # batch['cuboids'] = [item['cuboids'] for item in items]
-        batch['indexes'] = [item['indexes'] for item in items]
+    batch['keypoints_3d'] = [item['keypoints_3d'] for item in items]
+    # batch['cuboids'] = [item['cuboids'] for item in items]
+    batch['indexes'] = [item['indexes'] for item in items]
 
-        try:
-            batch['pred_keypoints_3d'] = np.array([item['pred_keypoints_3d'] for item in items])
-        except:
-            pass
+    try:
+        batch['pred_keypoints_3d'] = np.array([item['pred_keypoints_3d'] for item in items])
+    except:
+        pass
 
-        return human36m_prepare_batch(batch)
+    return human36m_prepare_batch(batch)
 
 
 def human36m_prepare_batch(batch):
@@ -267,5 +267,33 @@ def human36m_loader(dataset, batch_size=1, shuffle=False, num_workers=4):
                                shuffle=shuffle,
                                num_workers=num_workers,
                                collate_fn = human36m_collate_fn,
+                               pin_memory=True)
+    return dataloader
+
+
+
+# Mpii Dataset
+def mpii_collate_fn(batch):
+    # mainly used to convert numpy to tensor and concatenate,
+    # with making sure the data type of tensors is float.
+    samples = list(d for d in batch if d is not None)
+    if len(samples) == 0:
+        print("current batch is empty")
+        return None
+
+    images_batch = torch.stack([sample['image'] for sample in samples], dim=0) # batch_size x 1 x 3 x h x w
+    joints_2d_gt_batch = torch.stack([sample['joints_2d_gt'] for sample in samples], dim=0) # batch_size x 1 x num_joints x 2
+
+    images_batch, joints_2d_gt_batch = images_batch.type(torch.float32), joints_2d_gt_batch.type(torch.float32)
+    indexes = [sample['index'] for sample in samples]
+    return images_batch, None, None, None, joints_2d_gt_batch, indexes
+
+
+def mpii_loader(dataset, batch_size=1, shuffle=False, num_workers=4):
+    dataloader = td.DataLoader(dataset,
+                               batch_size=batch_size,
+                               shuffle=shuffle,
+                               num_workers=num_workers,
+                               collate_fn = mpii_collate_fn,
                                pin_memory=True)
     return dataloader

@@ -282,7 +282,7 @@ def real_test(config, model, dataloader, device, save_folder, \
 
             images_batch = images_batch.to(device)
 
-            if None in proj_mats_batch:
+            if proj_mats_batch is not None:
                 proj_mats_batch = proj_mats_batch.to(device)
                 joints_3d_gt_batch = joints_3d_gt_batch.to(device)
                 joints_3d_valid_batch = joints_3d_valid_batch.to(device)
