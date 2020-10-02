@@ -16,6 +16,8 @@ from utils.mpii.osutils import *
 from utils.mpii.imutils import *
 from utils.mpii.transforms import *
 
+import utils.visualize as visualize
+
 
 class Mpii(data.Dataset):
     def __init__(self,
@@ -49,7 +51,8 @@ class Mpii(data.Dataset):
                 self.valid_list.append(idx)
             else:
                 self.train_list.append(idx)
-        self.mean, self.std = self._compute_mean()
+        # self.mean, self.std = self._compute_mean()
+        self.mean, self.std = visualize.IMAGENET_MEAN, visualize.IMAGENET_STD # use IMAGENET normalization instead
 
     def _compute_mean(self):
         meanstd_file = '../pytorch-pose/data/mpii/mean.pth.tar'
@@ -132,7 +135,8 @@ class Mpii(data.Dataset):
         for i in range(nparts):
             # if tpts[i, 2] > 0: # This is evil!!
             if tpts[i, 1] > 0:
-                tpts[i, 0:2] = to_torch(transform(tpts[i, 0:2]+1, c, s, [self.out_res, self.out_res], rot=r))
+                tpts[i, 0:2] = to_torch(transform(tpts[i, 0:2]+1, c, s, [self.inp_res, self.inp_res], rot=r))
+                # tpts[i, 0:2] = to_torch(transform(tpts[i, 0:2]+1, c, s, [self.out_res, self.out_res], rot=r))
                 # target[i], vis = draw_labelmap(target[i], tpts[i]-1, self.sigma, type=self.label_type)
                 # target_weight[i, 0] *= vis
 
@@ -142,6 +146,7 @@ class Mpii(data.Dataset):
 
         # return inp, target, meta
 
+        inp = inp[(2, 1, 0), ...] # RGB -> BGR
         image = inp.unsqueeze(0) # 1 x 3 x height (default: 384) x width (default: 384)
         joints_2d_gt = tpts[:, 0:2].unsqueeze(0) # 1 x num_joints (16) x 2
         data = defaultdict(list)
