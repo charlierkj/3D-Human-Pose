@@ -15,7 +15,7 @@ def color_normalize(x, mean, std):
         x = x.repeat(3, 1, 1)
 
     for t, m, s in zip(x, mean, std):
-        t.sub_(m)
+        t.sub_(m).div_(s)
     return x
 
 
