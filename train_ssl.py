@@ -212,7 +212,7 @@ def ssl_train(config, model, syn_train_loader, real_train_loader, val_loader,\
               criterion, opt, epochs, device, \
               gamma=10, \
               log_every_iters=20, vis_every_iters=500, \
-              resume=False, logdir="./logs", exp_log="exp_27jnts@15.08.2020-05.15.16"):
+              resume=False, logdir="./logs", exp_log="ssl_mpii_17jnts@02.10.2020-20.40.35"):
     # configure dir and writer for saving weights and intermediate evaluation
     if not resume:
         experiment_name = "{}_{}_{}jnts@{}".format("ssl", config.dataset.type, "%d" % config.model.backbone.num_joints, datetime.now().strftime("%d.%m.%Y-%H.%M.%S"))
