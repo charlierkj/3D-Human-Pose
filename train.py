@@ -153,7 +153,7 @@ def train_one_epoch(model, train_loader, criterion, metric, opt, e, device, \
                 writer.add_image("joints/iter", joints_vis.transpose(2, 0, 1), global_step=e*iters_per_epoch+vis_iter)
         
                 vis_joint = (iter_idx // vis_every_iters) % 17
-                heatmap_vis = visualize.visualize_heatmap(images_batch[0], proj_mats_batch[0], joints_3d_gt_batch[0], \
+                heatmap_vis = visualize.visualize_heatmap(images_batch[0], joints_2d_gt_batch[0], \
                                                           heatmaps_pred[0], vis_joint=vis_joint)
                 writer.add_image("heatmap/joint_%d/iter" % vis_joint, heatmap_vis.transpose(2, 0, 1), global_step=e*iters_per_epoch+vis_iter)
 

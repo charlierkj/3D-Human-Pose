@@ -182,10 +182,10 @@ def train_one_epoch_ssl(config, model, syn_train_loader, real_train_loader, \
                 writer.add_image("joints/real/iter", joints_vis_real.transpose(2, 0, 1), global_step=e*iters_per_epoch+vis_iter)
         
                 vis_joint = (iter_idx // vis_every_iters) % 16
-                heatmap_vis_syn = visualize.visualize_heatmap(syn_images_batch[0], syn_proj_mats_batch[0], syn_joints_3d_gt_batch[0], \
+                heatmap_vis_syn = visualize.visualize_heatmap(syn_images_batch[0], syn_joints_2d_gt_batch[0], \
                                                               syn_heatmaps_pred[0], vis_joint=vis_joint)
                 writer.add_image("heatmap/syndata/joint_%d/iter" % vis_joint, heatmap_vis_syn.transpose(2, 0, 1), global_step=e*iters_per_epoch+vis_iter)
-                heatmap_vis_real = visualize.visualize_heatmap(real_images_batch[0], real_proj_mats_batch[0], real_joints_3d_gt_batch[0], \
+                heatmap_vis_real = visualize.visualize_heatmap(real_images_batch[0], real_joints_2d_gt_batch[0], \
                                                                real_heatmaps_pred[0], vis_joint=vis_joint)
                 writer.add_image("heatmap/real/joint_%d/iter" % vis_joint, heatmap_vis_real.transpose(2, 0, 1), global_step=e*iters_per_epoch+vis_iter)
 

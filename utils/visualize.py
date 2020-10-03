@@ -342,10 +342,10 @@ def visualize_pred_2D(images, joints_2d_gt, joints_2d_pred, size=5):
     plt.close('all')
     return fig_np
 
-def visualize_heatmap(images, proj_mats, joints_3d_gt, heatmaps_pred, vis_joint=0, size=5):
+def visualize_heatmap(images, joints_2d_gt_mv, heatmaps_pred, vis_joint=0, size=5):
     """visualize heatmap prediction for single data sample."""
     num_views = images.shape[0]
-    num_jnts = joints_3d_gt.shape[0]
+    num_jnts = joints_2d_gt_mv.shape[1]
     image_shape = images.shape[2:] # [h, w]
     heatmap_shape = heatmaps_pred.shape[2:] # [h, w]
     fig, axes = plt.subplots(nrows=2, ncols=num_views, figsize=(num_views * size, 2 * size))
@@ -369,9 +369,9 @@ def visualize_heatmap(images, proj_mats, joints_3d_gt, heatmaps_pred, vis_joint=
     ratio_w = heatmap_shape[1] / image_shape[1]
     ratio_h = heatmap_shape[0] / image_shape[0]
     heatmaps_gt = torch.zeros_like(heatmaps_pred)
+    heatmaps_gt = heatmaps_gt[:, 0:num_jnts, :, :]
     for view_idx in range(num_views):
-        joints_2d_gt = proj_to_2D(proj_mats[view_idx, ::], joints_3d_gt.T)
-        joints_2d_gt = joints_2d_gt.T
+        joints_2d_gt = joints_2d_gt_mv[view_idx, :, :]
         joints_2d_gt_scaled = torch.zeros_like(joints_2d_gt)
         joints_2d_gt_scaled[:, 0] = joints_2d_gt[:, 0] * ratio_w
         joints_2d_gt_scaled[:, 1] = joints_2d_gt[:, 1] * ratio_h

@@ -310,7 +310,7 @@ def real_test(config, model, dataloader, device, save_folder, \
 
                     # heatmaps plot
                     vis_joint = (iter_idx // saveimg_per_iter) % 17
-                    img_hm = visualize.visualize_heatmap(images_batch[0], proj_mats_batch[0], joints_3d_gt_batch[0], \
+                    img_hm = visualize.visualize_heatmap(images_batch[0], joints_2d_gt_batch[0], \
                             heatmaps_pred[0], vis_joint=vis_joint)
                     im_hm = Image.fromarray(img_hm)
                     img_path = os.path.join(imgs_folder, "heatmap_%06d.png" % indexes[0])
