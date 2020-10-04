@@ -21,8 +21,41 @@ from datasets.multiview_syndata import MultiView_SynHand
 import datasets.utils as datasets_utils
 import utils.visualize as visualize
 import train
-import test
 import utils.eval as utils_eval
+
+
+def test_one_epoch(model, val_loader, metric, device):
+    model.eval()
+    with torch.no_grad():
+        total_samples = 0
+        total_error = 0
+        total_detected = 0
+        for iter_idx, (images_batch, joints_2d_gt_batch) in enumerate(val_loader):
+            
+            if images_batch is None:
+                continue
+                    
+            images_batch = images_batch.to(device)
+            proj_mats_batch = None
+            joints_3d_gt_batch = None
+            joints_3d_valid_batch = None
+            joints_2d_gt_batch = joints_2d_gt_batch.to(device)
+            
+            batch_size = images_batch.shape[0]
+            joints_3d_pred, joints_2d_pred, heatmaps_pred, confidences_pred = model(images_batch, proj_mats_batch)
+
+            detected, error, num_samples = utils_eval.eval_one_batch(metric, joints_3d_pred, joints_2d_pred, \
+                                                                     proj_mats_batch, joints_3d_gt_batch, joints_3d_valid_batch, \
+                                                                     joints_2d_gt_batch)
+
+            total_detected += detected
+            total_error += num_samples * error
+            total_samples += num_samples
+
+        pck_acc = total_detected / total_samples # 2D
+        mean_error = total_error / total_samples # 3D
+
+    return pck_acc, mean_error
 
 
 def train_one_epoch(model, train_loader, criterion, metric, opt, e, device, \
@@ -157,7 +190,7 @@ def hand_train(config, model, train_loader, val_loader, criterion, opt, epochs, 
                                                              checkpoint_dir, writer, log_every_iters, vis_every_iters)
 
         # evaluate
-        test_acc, test_error = test.test_one_epoch(model, val_loader, metric, device)
+        test_acc, test_error = test_one_epoch(model, val_loader, metric, device)
         
         writer.add_scalar("test_pck/epoch", test_acc, e)
         writer.add_scalar("test_error/epoch", test_error, e)
