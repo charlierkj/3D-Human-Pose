@@ -37,7 +37,7 @@ model:
     num_layers: 152
 
 dataset:
-  type: "syndata"
+  type: "synhand"
   kind: "hand"
 
   data_root: "../mocap_syndata/multiview_data"

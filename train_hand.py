@@ -147,7 +147,7 @@ def hand_train(config, model, train_loader, val_loader, criterion, opt, epochs, 
     model.to(device)
 
     if isinstance(criterion, HeatmapMSELoss):
-        metric = PCK()
+        metric = PCK(thresh=0.2*2.2)
     else:
         raise ValueError("Please use 2D Heatmap Loss.")
 

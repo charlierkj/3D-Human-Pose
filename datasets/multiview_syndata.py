@@ -71,7 +71,7 @@ class MultiView_SynData(td.Dataset):
         self.joints_name = datasets_utils.get_joints_name(load_joints)
 
         self.num_jnts = len(self.joints_name)
-        assert self.num_jnts == load_joints
+        # assert self.num_jnts == load_joints
 
         for camera_idx in range(num_camera):
             self.camera_names.append("%04d" % camera_idx)
@@ -300,15 +300,15 @@ class MultiView_SynHand(MultiView_SynData):
         bbox_lh[:, 3] = (center_l[:, 1] + B_lh / 2).type(torch.int)
 
         # process 2D keypoint groundtruth
-        keypts_2d_rh[:, 0] = keypts_2d_rh[:, 0] - bbox_rh[:, 0]
-        keypts_2d_rh[:, 1] = keypts_2d_rh[:, 1] - bbox_rh[:, 1]
-        keypts_2d_rh[:, 0] = keypts_2d_rh[:, 0] * self.image_shape[0] / (bbox_rh[:, 2] - bbox_rh[:, 0])
-        keypts_2d_rh[:, 1] = keypts_2d_rh[:, 1] * self.image_shape[1] / (bbox_rh[:, 3] - bbox_rh[:, 1])
-        keypts_2d_lh[:, 0] = keypts_2d_lh[:, 0] - bbox_lh[:, 0]
-        keypts_2d_lh[:, 1] = keypts_2d_lh[:, 1] - bbox_lh[:, 1]
-        keypts_2d_lh[:, 0] = keypts_2d_lh[:, 0] * self.image_shape[0] / (bbox_lh[:, 2] - bbox_lh[:, 0])
-        keypts_2d_lh[:, 1] = keypts_2d_lh[:, 1] * self.image_shape[1] / (bbox_lh[:, 3] - bbox_lh[:, 1])
-        keypts_2d_lh[:, 0] = self.image_shape[0] - keypts_2d_lh[:, 0] # flip left to right
+        keypts_2d_rh[:, :, 0] = keypts_2d_rh[:, :, 0] - bbox_rh[:, 0].unsqueeze(-1)
+        keypts_2d_rh[:, :, 1] = keypts_2d_rh[:, :, 1] - bbox_rh[:, 1].unsqueeze(-1)
+        keypts_2d_rh[:, :, 0] = keypts_2d_rh[:, :, 0] * self.image_shape[0] / (bbox_rh[:, 2] - bbox_rh[:, 0]).unsqueeze(-1)
+        keypts_2d_rh[:, :, 1] = keypts_2d_rh[:, :, 1] * self.image_shape[1] / (bbox_rh[:, 3] - bbox_rh[:, 1]).unsqueeze(-1)
+        keypts_2d_lh[:, :, 0] = keypts_2d_lh[:, :, 0] - bbox_lh[:, 0].unsqueeze(-1)
+        keypts_2d_lh[:, :, 1] = keypts_2d_lh[:, :, 1] - bbox_lh[:, 1].unsqueeze(-1)
+        keypts_2d_lh[:, :, 0] = keypts_2d_lh[:, :, 0] * self.image_shape[0] / (bbox_lh[:, 2] - bbox_lh[:, 0]).unsqueeze(-1)
+        keypts_2d_lh[:, :, 1] = keypts_2d_lh[:, :, 1] * self.image_shape[1] / (bbox_lh[:, 3] - bbox_lh[:, 1]).unsqueeze(-1)
+        keypts_2d_lh[:, :, 0] = self.image_shape[0] - keypts_2d_lh[:, :, 0] # flip left to right
         keypts_2d = torch.cat((keypts_2d_rh, keypts_2d_lh), dim=0) # 2*num_views x 21 x 2
         
         # load cropped and resized images
@@ -316,8 +316,8 @@ class MultiView_SynHand(MultiView_SynData):
         images_lh = []
         for camera_idx, camera_name in enumerate(self.camera_names):
             image_path = os.path.join(anim_path, camera_name, '%06d.jpg' % frame)
-            image_rh = datasets_utils.load_image(image_path, bbox_rh[camera_idx, :], self.image_shape)
-            image_lh = datasets_utils.load_image(image_path, bbox_lh[camera_idx, :], self.image_shape, flip=True)
+            image_rh = datasets_utils.load_image(image_path, [int(c) for c in bbox_rh[camera_idx, :]], self.image_shape)
+            image_lh = datasets_utils.load_image(image_path, [int(c) for c in bbox_lh[camera_idx, :]], self.image_shape, flip=True)
             images_rh.append(image_rh)
             images_lh.append(image_lh)
 
@@ -328,6 +328,8 @@ class MultiView_SynHand(MultiView_SynData):
             images, keypts_2d = self.augment(images, keypts_2d)
 
         # info = '%s_%03d_%06d' % (self.subj[subj_idx], anim_idx, frame)
+        images = images.type(torch.float32)
+        keypts_2d = keypts_2d.type(torch.float32)
 
         return images, keypts_2d
 
