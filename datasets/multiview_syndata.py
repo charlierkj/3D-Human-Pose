@@ -203,5 +203,134 @@ class MultiView_SynData(td.Dataset):
         images_aug = torch.from_numpy(images_np_aug)
         keypts_2d_aug = torch.from_numpy(keypts_2d_np_aug)
         return images_aug, keypts_2d_aug
-            
+
+
+
+class MultiView_SynHand(MultiView_SynData):
+
+    def __init__(self,
+                 path="../mocap_syndata/multiview_data",
+                 num_camera=4,
+                 load_joints=21,
+                 invalid_joints=(),
+                 bbox=None,
+                 image_shape=[384, 384], 
+                 train=False,
+                 test=False, 
+                 with_aug=False):
+        """
+        invalid_joints: tuple of indices for invalid joints; associated joints will not be used in evaluation.
+        bbox: [upper_left_x, upper_left_y, lower_right-x, lower_right_y].
+        image_size: [width, height].
+        with_aug: use or not image augmentation.
+        """
+        super(MultiView_SynHand, self).__init__(path,
+                                                num_camera,
+                                                load_joints,
+                                                invalid_joints,
+                                                bbox,
+                                                image_shape,
+                                                train,
+                                                test,
+                                                with_aug)
+
+        # right / left hand joints name
+        self.joints_name_rh = self.joints_name[0:21]
+        self.joints_name_lh = self.joints_name[21:42]
+
+        # right / left forearm joints name, used for finding hand bbox
+        self.joints_name_rf = ["lowerarm_r", "hand_r"]
+        self.joints_name_lf = ["lowerarm_l", "hand_l"]
+
+    def __len__(self):
+        return self.len
+
+    def __getitem__(self, idx):
+        # currently only support for 2D
+        
+        sample = self.framelist[idx]
+
+        cameras = [] # list of camera instances
+
+        subj_idx, anim_idx, frame, _ = sample[0], sample[1], sample[2], sample[3]
+        subj = self.subj[subj_idx]
+        anim_path = os.path.join(self.basepath, subj, 'anim_%03d' % anim_idx)
+        skeleton_path = os.path.join(anim_path, 'skeleton_%06d.json' % frame)
+
+        # 3D keypoints groundtruth
+        keypts_rh = torch.from_numpy(datasets_utils.load_joints(self.joints_name_rh, skeleton_path))
+        keypts_lh = torch.from_numpy(datasets_utils.load_joints(self.joints_name_lh, skeleton_path))
+        keypts_rf = torch.from_numpy(datasets_utils.load_joints(self.joints_name_rf, skeleton_path))
+        keypts_lf = torch.from_numpy(datasets_utils.load_joints(self.joints_name_lf, skeleton_path))
+
+        # load camera
+        for camera_idx, camera_name in enumerate(self.camera_names):
+            cam = self.cameras[subj_idx][anim_idx][camera_idx]
+            cameras.append(cam)
+        proj_mats = torch.stack([torch.from_numpy(cam.get_P()) for cam in cameras], dim=0) # num_views x 3 x 4
+
+        # projected 2D keypoints groundtruth (unprocessed)
+        keypts_2d_rh = visualize.proj_to_2D_batch(proj_mats.unsqueeze(0), keypts_rh.unsqueeze(0))
+        keypts_2d_rh = keypts_2d_rh.squeeze(0) # num_views x 21 x 2
+        keypts_2d_lh = visualize.proj_to_2D_batch(proj_mats.unsqueeze(0), keypts_lh.unsqueeze(0))
+        keypts_2d_lh = keypts_2d_lh.squeeze(0)
+        keypts_2d_rf = visualize.proj_to_2D_batch(proj_mats.unsqueeze(0), keypts_rf.unsqueeze(0))
+        keypts_2d_rf = keypts_2d_rf.squeeze(0) # num_views x 2 x 2
+        keypts_2d_lf = visualize.proj_to_2D_batch(proj_mats.unsqueeze(0), keypts_lf.unsqueeze(0))
+        keypts_2d_lf = keypts_2d_lf.squeeze(0)
+
+        # generate bboxes
+        bbox_rh = torch.zeros((4, 4)) # hardcoded
+        bbox_lh = torch.zeros((4, 4))
+        center_r = keypts_2d_rf[:, 1, :] + 0.15 * (keypts_2d_rf[:, 1, :] - keypts_2d_rf[:, 0, :]) # num_views x 2
+        center_l = keypts_2d_lf[:, 1, :] + 0.15 * (keypts_2d_lf[:, 1, :] - keypts_2d_lf[:, 0, :]) # num_views x 2
+        w_rh = keypts_2d_rh[:, :, 0].max(-1)[0] - keypts_2d_rh[:, :, 0].min(-1)[0] # num_views
+        h_rh = keypts_2d_rh[:, :, 1].max(-1)[0] - keypts_2d_rh[:, :, 1].min(-1)[0] # num_views
+        B_rh = 2.2 * torch.max(w_rh, h_rh) # num_views
+        w_lh = keypts_2d_lh[:, :, 0].max(-1)[0] - keypts_2d_lh[:, :, 0].min(-1)[0] # num_views
+        h_lh = keypts_2d_lh[:, :, 1].max(-1)[0] - keypts_2d_lh[:, :, 1].min(-1)[0] # num_views
+        B_lh = 2.2 * torch.max(w_lh, h_lh) # num_views
+        bbox_rh[:, 0] = (center_r[:, 0] - B_rh / 2).type(torch.int)
+        bbox_rh[:, 1] = (center_r[:, 1] - B_rh / 2).type(torch.int)
+        bbox_rh[:, 2] = (center_r[:, 0] + B_rh / 2).type(torch.int)
+        bbox_rh[:, 3] = (center_r[:, 1] + B_rh / 2).type(torch.int)
+        bbox_lh[:, 0] = (center_l[:, 0] - B_lh / 2).type(torch.int)
+        bbox_lh[:, 1] = (center_l[:, 1] - B_lh / 2).type(torch.int)
+        bbox_lh[:, 2] = (center_l[:, 0] + B_lh / 2).type(torch.int)
+        bbox_lh[:, 3] = (center_l[:, 1] + B_lh / 2).type(torch.int)
+
+        # process 2D keypoint groundtruth
+        keypts_2d_rh[:, 0] = keypts_2d_rh[:, 0] - bbox_rh[:, 0]
+        keypts_2d_rh[:, 1] = keypts_2d_rh[:, 1] - bbox_rh[:, 1]
+        keypts_2d_rh[:, 0] = keypts_2d_rh[:, 0] * self.image_shape[0] / (bbox_rh[:, 2] - bbox_rh[:, 0])
+        keypts_2d_rh[:, 1] = keypts_2d_rh[:, 1] * self.image_shape[1] / (bbox_rh[:, 3] - bbox_rh[:, 1])
+        keypts_2d_lh[:, 0] = keypts_2d_lh[:, 0] - bbox_lh[:, 0]
+        keypts_2d_lh[:, 1] = keypts_2d_lh[:, 1] - bbox_lh[:, 1]
+        keypts_2d_lh[:, 0] = keypts_2d_lh[:, 0] * self.image_shape[0] / (bbox_lh[:, 2] - bbox_lh[:, 0])
+        keypts_2d_lh[:, 1] = keypts_2d_lh[:, 1] * self.image_shape[1] / (bbox_lh[:, 3] - bbox_lh[:, 1])
+        keypts_2d_lh[:, 0] = self.image_shape[0] - keypts_2d_lh[:, 0] # flip left to right
+        keypts_2d = torch.cat((keypts_2d_rh, keypts_2d_lh), dim=0) # 2*num_views x 21 x 2
+        
+        # load cropped and resized images
+        images_rh = []
+        images_lh = []
+        for camera_idx, camera_name in enumerate(self.camera_names):
+            image_path = os.path.join(anim_path, camera_name, '%06d.jpg' % frame)
+            image_rh = datasets_utils.load_image(image_path, bbox_rh[camera_idx, :], self.image_shape)
+            image_lh = datasets_utils.load_image(image_path, bbox_lh[camera_idx, :], self.image_shape, flip=True)
+            images_rh.append(image_rh)
+            images_lh.append(image_lh)
+
+        images = torch.stack(images_rh + images_lh, dim=0) # tensor of size (2*num_views x 3 x h x w) 
+
+        # augmentation
+        if self.aug is not None:
+            images, keypts_2d = self.augment(images, keypts_2d)
+
+        # info = '%s_%03d_%06d' % (self.subj[subj_idx], anim_idx, frame)
+
+        return images, keypts_2d
+
+    def augment(self, images, keypts_2d):
+        return super(MultiView_SynHand, self).augment(images, keypts_2d)         
         

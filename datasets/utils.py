@@ -49,6 +49,54 @@ Joints_32 = Joints_SynData + [
     "ball_l"
     ]
 
+Joints_LeftHand = [
+    "hand_l",
+    "thumb_01_l",
+    "thumb_02_l",
+    "thumb_03_l",
+    "thumb_end_l",
+    "index_01_l",
+    "index_02_l",
+    "index_03_l",
+    "index_end_l",
+    "middle_01_l",
+    "middle_02_l",
+    "middle_03_l",
+    "middle_end_l",
+    "ring_01_l",
+    "ring_02_l",
+    "ring_03_l",
+    "ring_end_l",
+    "pinky_01_l",
+    "pinky_02_l",
+    "pinky_03_l",
+    "pinky_end_l"
+    ]
+
+Joints_RightHand = [
+    "hand_r",
+    "thumb_01_r",
+    "thumb_02_r",
+    "thumb_03_r",
+    "thumb_end_r",
+    "index_01_r",
+    "index_02_r",
+    "index_03_r",
+    "index_end_r",
+    "middle_01_r",
+    "middle_02_r",
+    "middle_03_r",
+    "middle_end_r",
+    "ring_01_r",
+    "ring_02_r",
+    "ring_03_r",
+    "ring_end_r",
+    "pinky_01_r",
+    "pinky_02_r",
+    "pinky_03_r",
+    "pinky_end_r"
+    ]    
+
 Joints_23 = Joints_SynData + [
     "ball_r", #17
     "ball_l", #18
@@ -108,7 +156,8 @@ def get_joints_name(num_joints):
     if num_joints == 17:
         joints_name = Joints_SynData
     elif num_joints == 21:
-        joints_name = Joints_21
+        # joints_name = Joints_21
+        joints_name = Joints_RightHand + Joints_LeftHand
     elif num_joints == 23:
         joints_name = Joints_23
     elif num_joints == 27:
@@ -138,7 +187,7 @@ def load_joints(joints_name, skeleton_path):
     return keypoints
 
 
-def load_image(image_path, bbox=None, size=None):
+def load_image(image_path, bbox=None, size=None, flip=False):
     # return tensor
     assert os.path.isfile(image_path)
     image = Image.open(image_path) # RGB
@@ -146,6 +195,8 @@ def load_image(image_path, bbox=None, size=None):
         image = image.crop(bbox)
     if size is not None:
         image = image.resize(size)
+    if flip:
+        image = image.transpose(Image.FLIP_LEFT_RIGHT)
     transform = tv.transforms.Compose([
         tv.transforms.ToTensor(),
         tv.transforms.Normalize(visualize.IMAGENET_MEAN, visualize.IMAGENET_STD)

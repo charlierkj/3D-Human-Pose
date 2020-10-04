@@ -122,7 +122,29 @@ CONNECTIVITY_Foot = [
     (20, 19)
     ]
 
-CONNECTIVITY_21 = CONNECTIVITY_HUMAN36M + CONNECTIVITY_Foot
+# CONNECTIVITY_21 = CONNECTIVITY_HUMAN36M + CONNECTIVITY_Foot
+CONNECTIVITY_21 = [
+    (0, 1),
+    (1, 2),
+    (2, 3),
+    (3, 4),
+    (0, 5),
+    (5, 6),
+    (6, 7),
+    (7, 8),
+    (0, 9),
+    (9, 10),
+    (10, 11),
+    (11, 12),
+    (0, 13),
+    (13, 14),
+    (14, 15),
+    (15, 16),
+    (0, 17),
+    (17, 18),
+    (18, 19),
+    (19, 20)
+    ] # 21-Hand Keypoints
 
 CONNECTIVITY_27 = CONNECTIVITY_HUMAN36M + CONNECTIVITY_Face + \
         [tuple([j if j < 17 else j + 6 for j in conn]) for conn in CONNECTIVITY_Foot]
@@ -255,12 +277,23 @@ def draw_pose_2D(jnts_2d, ax, point_size=2, line_width=1):
     if num_jnts == 16:
         for conn in connectivity:
             ax.plot(jnts_2d[conn, 0], jnts_2d[conn, 1], c='lime', linewidth=line_width)
-    elif num_jnts > 16:
+    elif num_jnts > 16 and num_jnts != 21:
         for conn in connectivity[0:16]:
             ax.plot(jnts_2d[conn, 0], jnts_2d[conn, 1], c='lime', linewidth=line_width)
         if num_jnts > 17:
             for conn in connectivity[16:]:
                 ax.plot(jnts_2d[conn, 0], jnts_2d[conn, 1], c='cyan', linewidth=line_width)
+    elif num_jnts == 21: # plot 21-Hand Keypoints
+        for conn in connectivity[0:4]:
+            ax.plot(jnts_2d[conn, 0], jnts_2d[conn, 1], c='red', linewidth=line_width)
+        for conn in connectivity[4:8]:
+            ax.plot(jnts_2d[conn, 0], jnts_2d[conn, 1], c='yellow', linewidth=line_width)
+        for conn in connectivity[8:12]:
+            ax.plot(jnts_2d[conn, 0], jnts_2d[conn, 1], c='green', linewidth=line_width)
+        for conn in connectivity[12:16]:
+            ax.plot(jnts_2d[conn, 0], jnts_2d[conn, 1], c='blue', linewidth=line_width)
+        for conn in connectivity[16:20]:
+            ax.plot(jnts_2d[conn, 0], jnts_2d[conn, 1], c='purple', linewidth=line_width)
 
 def visualize_pred(images, proj_mats, joints_3d_gt, joints_3d_pred, joints_2d_pred, size=5):
     """visualize pose prediction for single data sample."""
