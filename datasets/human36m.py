@@ -33,7 +33,7 @@ class Human36MMultiViewDataset(Dataset):
                  kind="mpii",
                  undistort_images=False,
                  ignore_cameras=[],
-                 crop=True
+                 crop=True,
                  start_index=0
                  ):
         """

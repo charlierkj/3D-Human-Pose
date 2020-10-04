@@ -2,7 +2,7 @@ title: "human36m_alg"
 kind: "human36m"
 vis_freq: 20
 vis_n_elements: 10
-gpu_id: 3
+gpu_id: 0
 
 opt:
   criterion: "MSESmooth"
@@ -55,7 +55,7 @@ dataset:
 
     scale_bbox: 1.6
 
-    shuffle: true
+    shuffle: false
     randomize_n_views: false
     min_n_views: null
     max_n_views: null

@@ -54,7 +54,9 @@ def test_one_scene(model, dataloader, device, save_folder):
             for batch_i in range(batch_size):
                 vis = visualize.visualize_pred_2D(images_batch[batch_i], joints_2d_gt_batch[batch_i], joints_2d_pred[batch_i])
                 im = Image.fromarray(vis)
-                img_path = os.path.join(save_folder, "%06d.png" % iter_idx * batch_size + batch_i)
+                print(save_folder)
+                print("%06d.png" % (iter_idx * batch_size + batch_i))
+                img_path = os.path.join(save_folder, "%06d.png" % (iter_idx * batch_size + batch_i))
                 im.save(img_path)
 
     vid_name = os.path.join(save_folder, 'vid.mp4')
@@ -65,6 +67,7 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
     parser.add_argument('--config', type=str, default="experiments/human36m/test/human36m_alg_17jnts.yaml")
+    args = parser.parse_args()
 
     config = cfg.load_config(args.config)
 
@@ -89,25 +92,25 @@ if __name__ == "__main__":
     # load data
     print("Loading data..")
 
-    for si in [0, 3000, 6000, 9000, 12000]:
+    for si in [20000, 40000, 60000, 80000, 100000]:
         dataset = Human36MMultiViewDataset(
                     h36m_root=config.dataset.data_root,
-                    test=True,
+                    train=True,
                     image_shape=config.dataset.image_shape,
                     labels_path=config.dataset.labels_path,
-                    with_damaged_actions=config.dataset.test.with_damaged_actions,
-                    retain_every_n_frames=config.dataset.test.retain_every_n_frames,
-                    scale_bbox=config.dataset.test.scale_bbox,
+                    with_damaged_actions=config.dataset.train.with_damaged_actions,
+                    retain_every_n_frames=config.dataset.train.retain_every_n_frames,
+                    scale_bbox=config.dataset.train.scale_bbox,
                     kind="human36m",
-                    undistort_images=config.dataset.test.undistort_images,
-                    ignore_cameras=config.dataset.test.ignore_cameras if hasattr(config.dataset.test, "ignore_cameras") else [],
+                    undistort_images=config.dataset.train.undistort_images,
+                    ignore_cameras=config.dataset.train.ignore_cameras if hasattr(config.dataset.train, "ignore_cameras") else [],
                     crop=True,
                     start_index=si
                     )
         dataloader = datasets_utils.human36m_loader(dataset, \
-                                                    batch_size=config.dataset.test.batch_size, \
-                                                    shuffle=config.dataset.test.shuffle, \
-                                                    num_workers=config.dataset.test.num_workers)
+                                                    batch_size=config.dataset.train.batch_size, \
+                                                    shuffle=config.dataset.train.shuffle, \
+                                                    num_workers=config.dataset.train.num_workers)
 
         save_folder_1 = os.path.join('results/ssl_test/before', '%d' % si)
         save_folder_2 = os.path.join('results/ssl_test/after', '%d' % si)
