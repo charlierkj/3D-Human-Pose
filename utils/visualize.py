@@ -266,7 +266,7 @@ def make_vid(temp_folder, write_path, img_format='png', fps=30, size=None, remov
             os.remove(image)
     vid_writer.release()
 
-def draw_pose_2D(jnts_2d, ax, point_size=2, line_width=1):
+def draw_pose_2D(jnts_2d, ax, point_size=2, line_width=1, color='lime'):
     if torch.is_tensor(jnts_2d):
         jnts_2d = jnts_2d.cpu().detach() # n x 2
 
@@ -276,10 +276,10 @@ def draw_pose_2D(jnts_2d, ax, point_size=2, line_width=1):
     ax.scatter(jnts_2d[:, 0], jnts_2d[:, 1], c='red', s=point_size) # plot joints
     if num_jnts == 16:
         for conn in connectivity:
-            ax.plot(jnts_2d[conn, 0], jnts_2d[conn, 1], c='lime', linewidth=line_width)
+            ax.plot(jnts_2d[conn, 0], jnts_2d[conn, 1], c=color, linewidth=line_width)
     elif num_jnts > 16 and num_jnts != 21:
         for conn in connectivity[0:16]:
-            ax.plot(jnts_2d[conn, 0], jnts_2d[conn, 1], c='lime', linewidth=line_width)
+            ax.plot(jnts_2d[conn, 0], jnts_2d[conn, 1], c=color, linewidth=line_width)
         if num_jnts > 17:
             for conn in connectivity[16:]:
                 ax.plot(jnts_2d[conn, 0], jnts_2d[conn, 1], c='cyan', linewidth=line_width)
@@ -368,6 +368,39 @@ def visualize_pred_2D(images, joints_2d_gt, joints_2d_pred, size=5):
     axes[1, 0].set_ylabel('2D prediction', size='large')
     for view_idx in range(num_views):
         draw_pose_2D(joints_2d_pred[view_idx, :, :], axes[1, view_idx])
+
+    fig.tight_layout()
+    fig.canvas.draw()
+    fig_np = np.array(fig.canvas.renderer._renderer)
+    plt.close('all')
+    return fig_np
+
+def visualize_ssl(images, joints_2d_before, joints_2d_after, size=5):
+    """visualize pose prediction for single data sample."""
+    num_views = images.shape[0]
+    num_jnts = joints_2d_before.shape[1]
+    fig, axes = plt.subplots(nrows=1, ncols=num_views, figsize=(num_views * size, 1 * size))
+    axes = axes.reshape(1, num_views)
+
+    # plot images
+    if torch.is_tensor(images):
+        images = images.cpu().numpy()
+    images = np.moveaxis(images, 1, -1) # num_views x C x H x W -> num_views x H x W x C
+    images = images[..., (2, 1, 0)] # BGR -> RGB
+    images = np.clip(255 * (images * IMAGENET_STD + IMAGENET_MEAN), 0, 255).astype(np.uint8) # denormalize
+    #images = images[..., (2, 1, 0)] # BGR -> RGB
+    
+    for view_idx in range(num_views):
+        axes[0, view_idx].imshow(images[view_idx, ::])
+        axes[0, view_idx].set_xlabel('view_%d' % (view_idx + 1), size='large')
+
+    # plot 'before' poses
+    for view_idx in range(num_views):
+        draw_pose_2D(joints_2d_before[view_idx, :, :], axes[0, view_idx])
+
+    # plot 'after' 2D poses
+    for view_idx in range(num_views):
+        draw_pose_2D(joints_2d_after[view_idx, :, :], axes[0, view_idx], color='blue')
 
     fig.tight_layout()
     fig.canvas.draw()

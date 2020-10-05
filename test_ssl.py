@@ -25,7 +25,7 @@ import train
 import utils.eval as utils_eval
 
 
-def test_one_scene(model, dataloader, device, save_folder):
+def test_one_scene(model_before, model_after, dataloader, device, save_folder):
 
     os.makedirs(save_folder, exist_ok=True)
 
@@ -49,10 +49,11 @@ def test_one_scene(model, dataloader, device, save_folder):
 
             batch_size = images_batch.shape[0]
             
-            joints_3d_pred, joints_2d_pred, heatmaps_pred, confidences_pred = model(images_batch, proj_mats_batch)
+            _, joints_2d_pred_before, _, _ = model_before(images_batch, proj_mats_batch)
+            _, joints_2d_pred_after, _, _ = model_after(images_batch, proj_mats_batch)
 
             for batch_i in range(batch_size):
-                vis = visualize.visualize_pred_2D(images_batch[batch_i], joints_2d_gt_batch[batch_i], joints_2d_pred[batch_i])
+                vis = visualize.visualize_ssl(images_batch[batch_i], joints_2d_pred_before[batch_i], joints_2d_pred_after[batch_i])
                 im = Image.fromarray(vis)
                 print(save_folder)
                 print("%06d.png" % (iter_idx * batch_size + batch_i))
@@ -92,7 +93,7 @@ if __name__ == "__main__":
     # load data
     print("Loading data..")
 
-    for si in [20000, 40000, 60000, 80000, 100000]:
+    for si in [0, 3000, 6000, 9000, 12000, 20000, 40000, 60000, 80000, 100000]:
         dataset = Human36MMultiViewDataset(
                     h36m_root=config.dataset.data_root,
                     train=True,
@@ -112,8 +113,6 @@ if __name__ == "__main__":
                                                     shuffle=config.dataset.train.shuffle, \
                                                     num_workers=config.dataset.train.num_workers)
 
-        save_folder_1 = os.path.join('results/ssl_test/before', '%d' % si)
-        save_folder_2 = os.path.join('results/ssl_test/after', '%d' % si)
-        test_one_scene(model_1, dataloader, device, save_folder_1)
-        test_one_scene(model_2, dataloader, device, save_folder_2)
+        save_folder = os.path.join('results/ssl_test/compare', '%d' % si)
+        test_one_scene(model_1, model_2, dataloader, device, save_folder)
 
