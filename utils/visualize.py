@@ -400,7 +400,7 @@ def visualize_ssl(images, joints_2d_before, joints_2d_after, size=5):
 
     # plot 'after' 2D poses
     for view_idx in range(num_views):
-        draw_pose_2D(joints_2d_after[view_idx, :, :], axes[0, view_idx], color='blue')
+        draw_pose_2D(joints_2d_after[view_idx, :, :], axes[0, view_idx], color='magenta')
 
     fig.tight_layout()
     fig.canvas.draw()

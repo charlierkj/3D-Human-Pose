@@ -30,8 +30,10 @@ def test_one_scene(model_before, model_after, dataloader, device, save_folder):
     os.makedirs(save_folder, exist_ok=True)
 
     # model
-    model.to(device)
-    model.eval()
+    model_before.to(device)
+    model_after.to(device)
+    model_before.eval()
+    model_after.eval()
 
     with torch.no_grad():
         
@@ -71,11 +73,13 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     config = cfg.load_config(args.config)
+    config_1 = cfg.load_config(args.config)
+    config_2 = cfg.load_config(args.config)
 
-    config_1 = config
     config_1.model.checkpoint = "./logs/exp_17jnts@19.09.2020-04.49.14/checkpoint/0019/weights.pth"
-    config_2 = config
     config_2.model.checkpoint = "./logs/ssl_17jnts@26.09.2020-20.50.40/checkpoint/0007/weights.pth"
+    # print(config_1)
+    # print(config_2)
 
     device = torch.device(0)
     print(device)
