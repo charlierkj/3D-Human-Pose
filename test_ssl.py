@@ -20,12 +20,39 @@ from datasets.human36m import Human36MMultiViewDataset
 import datasets.utils as datasets_utils
 
 import utils.visualize as visualize
+import consistency
 
 import train
 import utils.eval as utils_eval
 
 
-def test_one_scene(model_before, model_after, dataloader, device, save_folder):
+def test_one_scene_pseudo(pseudo_labels, dataloader, save_folder, start_index):
+
+    os.makedirs(save_folder, exist_ok=True)
+
+    for iter_idx, (images_batch, proj_mats_batch, joints_3d_gt_batch, joints_3d_valid_batch, joints_2d_gt_batch, indexes) \
+            in enumerate(dataloader):
+        
+        if images_batch is None:
+            continue
+
+        indexes_abs = [idx + start_index for idx in indexes]
+
+        p = 0.2 # percentage
+        score_thresh = consistency.get_score_thresh(pseudo_labels, p)
+        joints_2d_pl_batch, joints_2d_valid_batch = \
+                                 consistency.get_pseudo_labels(pseudo_labels, indexes_abs, images_batch.shape[1], score_thresh)
+        
+        for batch_i in range(batch_size):
+            vis = visualize.visualize_pseudo_labels(images_batch[batch_i], joints_2d_pl_batch[batch_i], joints_2d_valid_batch[batch_i])
+            im = Image.fromarray(vis)
+            print(save_folder)
+            print("%06d.png" % (iter_idx * batch_size + batch_i))
+            img_path = os.path.join(save_folder, "%06d.png" % (iter_idx * batch_size + batch_i))
+            im.save(img_path)
+    
+
+def test_one_scene_compare(model_before, model_after, dataloader, device, save_folder):
 
     os.makedirs(save_folder, exist_ok=True)
 
@@ -73,29 +100,30 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     config = cfg.load_config(args.config)
-    config_1 = cfg.load_config(args.config)
-    config_2 = cfg.load_config(args.config)
+    # config_1 = cfg.load_config(args.config)
+    # config_2 = cfg.load_config(args.config)
 
-    config_1.model.checkpoint = "./logs/exp_17jnts@19.09.2020-04.49.14/checkpoint/0019/weights.pth"
-    config_2.model.checkpoint = "./logs/ssl_17jnts@26.09.2020-20.50.40/checkpoint/0007/weights.pth"
+    # config_1.model.checkpoint = "./logs/exp_17jnts@19.09.2020-04.49.14/checkpoint/0019/weights.pth"
+    # config_2.model.checkpoint = "./logs/ssl_17jnts@26.09.2020-20.50.40/checkpoint/0007/weights.pth"
     # print(config_1)
     # print(config_2)
 
     device = torch.device(0)
     print(device)
 
-    model_1 = AlgebraicTriangulationNet(config_1, device=device)
-    model_1 = torch.nn.DataParallel(model_1, device_ids=[0])
+    # model_1 = AlgebraicTriangulationNet(config_1, device=device)
+    # model_1 = torch.nn.DataParallel(model_1, device_ids=[0])
 
-    model_2 = AlgebraicTriangulationNet(config_2, device=device)
-    model_2 = torch.nn.DataParallel(model_2, device_ids=[0])
+    # model_2 = AlgebraicTriangulationNet(config_2, device=device)
+    # model_2 = torch.nn.DataParallel(model_2, device_ids=[0])
 
-    print("Initializing model weights..")
-    model_1 = train.load_pretrained_model(model_1, config_1)
-    model_2 = train.load_pretrained_model(model_2, config_2)
+    # print("Initializing model weights..")
+    # model_1 = train.load_pretrained_model(model_1, config_1)
+    # model_2 = train.load_pretrained_model(model_2, config_2)
 
     # load data
     print("Loading data..")
+    pseudo_labels = np.load("pseudo_labels/%s_train.npy" % config.dataset.type, allow_pickle=True).item() # load pseudo labels
 
     for si in [0, 3000, 6000, 9000, 12000, 20000, 40000, 60000, 80000, 100000]:
         dataset = Human36MMultiViewDataset(
@@ -117,6 +145,7 @@ if __name__ == "__main__":
                                                     shuffle=config.dataset.train.shuffle, \
                                                     num_workers=config.dataset.train.num_workers)
 
-        save_folder = os.path.join('results/ssl_test/compare', '%d' % si)
-        test_one_scene(model_1, model_2, dataloader, device, save_folder)
+        save_folder = os.path.join('results/ssl_test/h36m', '%d' % si)
+        # test_one_scene_compare(model_1, model_2, dataloader, device, save_folder)
+        test_one_scene_pseudo(pseudo_labels, dataloader, save_folder, start_index=si)
 
