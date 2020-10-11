@@ -84,7 +84,8 @@ class Human36MMultiViewDataset(Dataset):
         if train:
             mask = np.isin(self.labels['table']['subject_idx'], train_subjects, assume_unique=True)
             # indices.append(np.nonzero(mask)[0][::retain_every_n_frames])
-            indices.append(np.nonzero(mask)[0][start_index:start_index+60])
+            inds = np.nonzero(mask)[0][::retain_every_n_frames]
+            indices.append(inds[start_index:start_index+60])
         if test:
             mask = np.isin(self.labels['table']['subject_idx'], test_subjects, assume_unique=True)
 

@@ -418,7 +418,7 @@ def visualize_ssl(images, joints_2d_before, joints_2d_after, size=5):
 def visualize_pseudo_labels(images, joints_2d_gt, joints_2d_valid, size=5):
     """visualize pose prediction for single data sample."""
     num_views = images.shape[0]
-    num_jnts = joints_2d_before.shape[1]
+    num_jnts = joints_2d_gt.shape[1]
     fig, axes = plt.subplots(nrows=1, ncols=num_views, figsize=(num_views * size, 1 * size))
     axes = axes.reshape(1, num_views)
 
@@ -436,7 +436,7 @@ def visualize_pseudo_labels(images, joints_2d_gt, joints_2d_valid, size=5):
 
     # plot poses
     for view_idx in range(num_views):
-        draw_pose_2D(joints_2d_gt[view_idx, :, :], axes[0, view_idx], point_size=5, jnts_2d_valid=joints_2d_valid[view_idx, :, :])
+        draw_pose_2D(joints_2d_gt[view_idx, :, :], axes[0, view_idx], point_size=20, jnts_2d_valid=joints_2d_valid[view_idx, :, :])
 
     fig.tight_layout()
     fig.canvas.draw()

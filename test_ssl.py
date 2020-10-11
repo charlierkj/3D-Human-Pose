@@ -35,7 +35,8 @@ def test_one_scene_pseudo(pseudo_labels, dataloader, save_folder, start_index):
         
         if images_batch is None:
             continue
-
+        
+        batch_size = images_batch.shape[0]
         indexes_abs = [idx + start_index for idx in indexes]
 
         p = 0.2 # percentage
@@ -100,6 +101,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     config = cfg.load_config(args.config)
+    config.dataset.train.retain_every_n_frames = 10
     # config_1 = cfg.load_config(args.config)
     # config_2 = cfg.load_config(args.config)
 
@@ -125,7 +127,8 @@ if __name__ == "__main__":
     print("Loading data..")
     pseudo_labels = np.load("pseudo_labels/%s_train.npy" % config.dataset.type, allow_pickle=True).item() # load pseudo labels
 
-    for si in [0, 3000, 6000, 9000, 12000, 20000, 40000, 60000, 80000, 100000]:
+    # for si in [0, 3000, 6000, 9000, 12000, 20000, 40000, 60000, 80000, 100000]:
+    for si in [0, 2000, 4000, 6000, 8000, 10000]:
         dataset = Human36MMultiViewDataset(
                     h36m_root=config.dataset.data_root,
                     train=True,
