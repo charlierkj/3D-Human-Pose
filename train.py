@@ -70,7 +70,7 @@ def load_pretrained_model(model, config, init_joints=17):
         print("Parameters [{}] were not inited".format(not_inited_params))
 
     model.load_state_dict(new_pretrained_state_dict, strict=True)
-    print("Successfully loaded pretrained weights for whole model")
+    print("Successfully loaded pretrained weights for whole model from %s" % config.model.checkpoint)
     return model
 
 

@@ -212,13 +212,13 @@ def ssl_train(config, model, syn_train_loader, real_train_loader, val_loader,\
               criterion, opt, epochs, device, \
               gamma=10, \
               log_every_iters=20, vis_every_iters=500, \
-              resume=False, logdir="./logs", exp_log="ssl_mpii_17jnts@02.10.2020-20.40.35"):
+              resume=False, logdir="./logs", resume_log="ssl_human36m_17jnts@13.10.2020-00.34.26"):
     # configure dir and writer for saving weights and intermediate evaluation
     if not resume:
         experiment_name = "{}_{}_{}jnts@{}".format("ssl", config.dataset.type, "%d" % config.model.backbone.num_joints, datetime.now().strftime("%d.%m.%Y-%H.%M.%S"))
         start_epoch = 0
     else:
-        experiment_name = exp_log
+        experiment_name = resume_log
         start_epoch = int(sorted(os.listdir(os.path.join(logdir, experiment_name, "checkpoint")))[-1]) + 1
         
     experiment_dir = os.path.join(logdir, experiment_name)
@@ -296,6 +296,7 @@ if __name__ == "__main__":
     parser.add_argument('--resume', action='store_true')
     parser.add_argument('--logdir', type=str, default="./logs")
     parser.add_argument('--gamma', type=float, default=10.0)
+    parser.add_argument('--resume_log', type=str, default="")
     args = parser.parse_args()
 
     config = cfg.load_config(args.config)
@@ -312,6 +313,9 @@ if __name__ == "__main__":
 
     if config.model.init_weights:
         print("Initializing model weights..")
+        if args.resume:
+            last_epoch = int(sorted(os.listdir(os.path.join("./logs", args.resume_log, "checkpoint")))[-1])
+            config.model.checkpoint = "./logs/%s/checkpoint/%04d/weights.pth" % (args.resume_log, last_epoch)
         model = train.load_pretrained_model(model, config)
 
     # load data
@@ -410,4 +414,4 @@ if __name__ == "__main__":
     ssl_train(config, model, syn_train_loader, real_train_loader, val_loader, \
               criterion, opt, config.opt.n_epochs, device, \
               gamma=args.gamma, \
-              resume=args.resume, logdir=args.logdir)
+              resume=args.resume, logdir=args.logdir, resume_log=args.resume_log)
