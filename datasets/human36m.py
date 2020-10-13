@@ -83,9 +83,9 @@ class Human36MMultiViewDataset(Dataset):
         indices = []
         if train:
             mask = np.isin(self.labels['table']['subject_idx'], train_subjects, assume_unique=True)
-            # indices.append(np.nonzero(mask)[0][::retain_every_n_frames])
-            inds = np.nonzero(mask)[0][::retain_every_n_frames]
-            indices.append(inds[start_index:start_index+60])
+            indices.append(np.nonzero(mask)[0][::retain_every_n_frames])
+            # inds = np.nonzero(mask)[0][::retain_every_n_frames]
+            # indices.append(inds[start_index:start_index+60])
         if test:
             mask = np.isin(self.labels['table']['subject_idx'], test_subjects, assume_unique=True)
 
@@ -98,8 +98,8 @@ class Human36MMultiViewDataset(Dataset):
 
                 mask &= ~(mask_S9 & mask_damaged_actions)
 
-            # indices.append(np.nonzero(mask)[0][::retain_every_n_frames])
-            indices.append(np.nonzero(mask)[0][start_index:start_index+60])
+            indices.append(np.nonzero(mask)[0][::retain_every_n_frames])
+            # indices.append(np.nonzero(mask)[0][start_index:start_index+60])
 
         self.labels['table'] = self.labels['table'][np.concatenate(indices)]
 

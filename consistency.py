@@ -13,13 +13,21 @@ import datasets.utils as datasets_utils
 import train
 
 
-def get_score_thresh(pseudo_labels, percentage):
+def get_score_thresh(pseudo_labels, percentage, separate=False):
     scores = pseudo_labels['labels']['scores']
-    scores = scores.flatten()
-    scores = np.sort(scores)[::-1]
-    num_scores = len(scores)
-    idx = int(num_scores * percentage)
-    return scores[idx]
+    if separate: # separately get pseudo labels for each joint
+        scores = np.sort(scores, axis=0)
+        num_scores = len(scores)
+        idx = int(num_scores * (1 - percentage))
+        score_thresh = scores[idx, :].reshape(1, -1)
+    else:
+        scores = scores.flatten()
+        scores = np.sort(scores)[::-1]
+        num_scores = len(scores)
+        idx = int(num_scores * percentage)
+        score_thresh = scores[idx]
+    # print(score_thresh)
+    return score_thresh
 
 
 def get_pseudo_labels(pseudo_labels, indexes, num_views, score_thresh):
@@ -139,6 +147,10 @@ def consistency_ensemble(model, images_batch, proj_mats_batch, num_tfs=4):
 
 def generate_pseudo_labels(config, model, real_loader, device, \
                            num_tfs=4, test=False):
+
+    if os.path.exists("pseudo_labels/%s_train.npy" % config.dataset.type):
+        return
+
     num_joints = config.model.backbone.num_joints
 
     # fill in parameters
