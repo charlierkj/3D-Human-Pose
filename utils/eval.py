@@ -2,6 +2,7 @@ import numpy as np
 import torch
 
 from datasets.human36m import Human36MMultiViewDataset
+from datasets.mpii import Mpii
 import datasets.utils as datasets_utils
 from models.loss import KeypointsL2Loss
 from models.metric import PCK, PCKh
