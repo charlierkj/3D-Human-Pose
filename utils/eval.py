@@ -111,12 +111,12 @@ def eval_pseudo_labels(dataset='human36m', separate=True): # hardcoded
 
         detected_pck, num_jnts = PCK()(joints_2d_pseudo, joints_2d_gt_batch, joints_2d_valid_batch)
 
-        detected_pckh, _ = PCKh(thresh=thresh)(joints_2d_pseudo, joints_2d_gt_batch, joints_2d_valid_batch)
+        # detected_pckh, _ = PCKh(thresh=thresh)(joints_2d_pseudo, joints_2d_gt_batch, joints_2d_valid_batch)
 
         total_joints += num_jnts
         total_detected_pck += detected_pck
-        total_detected_pckh += detected_pckh
+        # total_detected_pckh += detected_pckh
 
     print("PCK:", total_detected_pck / total_joints)
-    print("PCKh:", total_detected_pckh / total_joints)
+    # print("PCKh:", total_detected_pckh / total_joints)
 
