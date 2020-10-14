@@ -57,28 +57,45 @@ def eval_one_batch(metric, joints_3d_pred, joints_2d_pred, \
     return detected, error, num_samples # either total_joints, or total_frames
 
 
-def eval_pseudo_labels(): # hardcoded
-    h36m_train_set = dataset = Human36MMultiViewDataset(
-        h36m_root="../learnable-triangulation-pytorch/data/human36m/processed/",
-        train=True,
-        image_shape=[384, 384],
-        labels_path="../learnable-triangulation-pytorch/data/human36m/extra/human36m-multiview-labels-GTbboxes.npy",
-        with_damaged_actions=True,
-        retain_every_n_frames=10,
-        scale_bbox=1.6,
-        kind="human36m",
-        undistort_images=True,
-        ignore_cameras=[],
-        crop=True,
-    )
-    h36m_train_loader = datasets_utils.human36m_loader(h36m_train_set, \
-                                                       batch_size=64, \
-                                                       shuffle=False, \
-                                                       num_workers=4)
-
-    pseudo_labels = np.load("pseudo_labels/human36m_train.npy", allow_pickle=True).item()
+def eval_pseudo_labels(dataset='human36m', separate=True): # hardcoded
+    if dataset == 'human36m':
+        train_set = dataset = Human36MMultiViewDataset(
+            h36m_root="../learnable-triangulation-pytorch/data/human36m/processed/",
+            train=True,
+            image_shape=[384, 384],
+            labels_path="../learnable-triangulation-pytorch/data/human36m/extra/human36m-multiview-labels-GTbboxes.npy",
+            with_damaged_actions=True,
+            retain_every_n_frames=10,
+            scale_bbox=1.6,
+            kind="human36m",
+            undistort_images=True,
+            ignore_cameras=[],
+            crop=True,
+        )
+        train_loader = datasets_utils.human36m_loader(train_set, \
+                                                      batch_size=64, \
+                                                      shuffle=False, \
+                                                      num_workers=4)
+        pseudo_labels = np.load("pseudo_labels/human36m_train.npy", allow_pickle=True).item()
+        thresh = 1
+        
+    elif dataset == 'mpii':
+        train_set = Mpii(
+            image_path="../mpii_images",
+            anno_path="../pytorch-pose/data/mpii/mpii_annotations.json",
+            inp_res=384,
+            out_res=96,
+            is_train=True
+        )
+        train_loader = datasets_utils.mpii_loader(train_set, \
+                                                  batch_size=256, \
+                                                  shuffle=False, \
+                                                  num_workers=4)
+        pseudo_labels = np.load("pseudo_labels/mpii_train.npy", allow_pickle=True).item()
+        thresh = 0.5
+        
     p = 0.2 # percentage
-    score_thresh = consistency.get_score_thresh(pseudo_labels, p)
+    score_thresh = consistency.get_score_thresh(pseudo_labels, p, separate=separate)
 
     total_joints = 0
     total_detected_pck = 0
@@ -93,7 +110,7 @@ def eval_pseudo_labels(): # hardcoded
 
         detected_pck, num_jnts = PCK()(joints_2d_pseudo, joints_2d_gt_batch, joints_2d_valid_batch)
 
-        detected_pckh, _ = PCKh(thresh=1)(joints_2d_pseudo, joints_2d_gt_batch, joints_2d_valid_batch)
+        detected_pckh, _ = PCKh(thresh=thresh)(joints_2d_pseudo, joints_2d_gt_batch, joints_2d_valid_batch)
 
         total_joints += num_jnts
         total_detected_pck += detected_pck
