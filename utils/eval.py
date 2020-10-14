@@ -101,7 +101,7 @@ def eval_pseudo_labels(dataset='human36m', separate=True): # hardcoded
     total_joints = 0
     total_detected_pck = 0
     total_detected_pckh = 0
-    for iter_idx, (images_batch, proj_mats_batch, joints_3d_gt_batch, joints_3d_valid_batch, joints_2d_gt_batch, indexes) in enumerate(h36m_train_loader):
+    for iter_idx, (images_batch, proj_mats_batch, joints_3d_gt_batch, joints_3d_valid_batch, joints_2d_gt_batch, indexes) in enumerate(train_loader):
         print(iter_idx)
         if images_batch is None:
             continue
