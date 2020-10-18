@@ -50,6 +50,8 @@ def train_one_epoch_ssl(config, model, syn_train_loader, real_train_loader, \
     total_detected_real = 0
     total_error_real = 0
     total_samples_real = 0 # num_joints or num_frames
+    total_detected_per_joint_real = torch.zeros((17, )) # hardcoded
+    total_num_per_joint_real = torch.zeros((17, )) # hardcoded
 
     # jointly training
     joint_loader = zip(syn_train_loader, real_train_loader)
@@ -125,9 +127,10 @@ def train_one_epoch_ssl(config, model, syn_train_loader, real_train_loader, \
         opt.step()
 
         # evaluate on syndata
-        syn_detected, syn_error, syn_num_samples = utils_eval.eval_one_batch(metric, syn_joints_3d_pred, syn_joints_2d_pred, \
-                                                                             syn_proj_mats_batch, syn_joints_3d_gt_batch, syn_joints_3d_valid_batch, \
-                                                                             syn_joints_2d_gt_batch)
+        syn_detected, syn_error, syn_num_samples, _, _\
+                      = utils_eval.eval_one_batch(metric, syn_joints_3d_pred, syn_joints_2d_pred, \
+                                                  syn_proj_mats_batch, syn_joints_3d_gt_batch, syn_joints_3d_valid_batch, \
+                                                  syn_joints_2d_gt_batch)
 
         total_train_loss_syn += syn_num_samples * syn_loss.item()
         total_detected_syn += syn_detected
@@ -135,14 +138,17 @@ def train_one_epoch_ssl(config, model, syn_train_loader, real_train_loader, \
         total_samples_syn += syn_num_samples
 
         # evaluate on h36m
-        real_detected, real_error, real_num_samples = utils_eval.eval_one_batch(metric, real_joints_3d_pred, real_joints_2d_pred, \
-                                                                                real_proj_mats_batch, real_joints_3d_gt_batch, real_joints_3d_valid_batch, \
-                                                                                real_joints_2d_gt_batch)
+        real_detected, real_error, real_num_samples, real_detected_per_joint, real_num_per_joint \
+                       = utils_eval.eval_one_batch(metric, real_joints_3d_pred, real_joints_2d_pred, \
+                                                   real_proj_mats_batch, real_joints_3d_gt_batch, real_joints_3d_valid_batch, \
+                                                   real_joints_2d_gt_batch)
 
         total_train_loss_real += real_num_samples * real_loss.item()
         total_detected_real += real_detected
         total_error_real += real_num_samples * real_error
         total_samples_real += real_num_samples
+        total_detected_per_joint_real += real_detected_per_joint # size: num_joints
+        total_num_per_joint_real += real_num_per_joint # size: num_joints
 
         # logger
         if iter_idx % log_every_iters == log_every_iters - 1:
@@ -153,6 +159,7 @@ def train_one_epoch_ssl(config, model, syn_train_loader, real_train_loader, \
             mean_loss_logging_real = total_train_loss_real / total_samples_real
             pck_acc_logging_real = total_detected_real / total_samples_real
             mean_error_logging_real = total_error_real / total_samples_real
+            pck_per_joint_logging_real = total_detected_per_joint_real / total_num_per_joint_real # size: num_joints
             print("epoch: %d, iter: %d" % (e, logging_iter))
             print("        (Syndata) train loss: %f, train acc: %.3f, train error: %.3f" \
                   % (mean_loss_logging_syn, pck_acc_logging_syn, mean_error_logging_syn))
@@ -166,6 +173,8 @@ def train_one_epoch_ssl(config, model, syn_train_loader, real_train_loader, \
                 writer.add_scalar("train_loss/real/iter", mean_loss_logging_real, e * iters_per_epoch + logging_iter)
                 writer.add_scalar("train_pck/real/iter", pck_acc_logging_real, e * iters_per_epoch + logging_iter)
                 writer.add_scalar("train_error/real/iter", mean_error_logging_real, e * iters_per_epoch + logging_iter)
+                for jnt_i in range(len(pck_per_joint_logging_real)):
+                    writer.add_scalar("train_pck/real/iter/joint_%d" % jnt_i, pck_per_joint_logging_real[jnt_i], e * iters_per_epoch + logging_iter)
 
         # save images
         if iter_idx % vis_every_iters == 0:
@@ -196,6 +205,7 @@ def train_one_epoch_ssl(config, model, syn_train_loader, real_train_loader, \
     mean_loss_real = total_train_loss_real / total_samples_real
     pck_acc_real = total_detected_real / total_samples_real
     mean_error_real = total_error_real / total_samples_real
+    pck_per_joint_real = total_detected_per_joint_real / total_num_per_joint_real # size: num_joints
     if writer is not None:
         writer.add_scalar("train_loss/syndata/epoch",  mean_loss_syn, e)
         writer.add_scalar("train_pck/syndata/epoch", pck_acc_syn, e)
@@ -203,6 +213,8 @@ def train_one_epoch_ssl(config, model, syn_train_loader, real_train_loader, \
         writer.add_scalar("train_loss/real/epoch",  mean_loss_real, e)
         writer.add_scalar("train_pck/real/epoch", pck_acc_real, e)
         writer.add_scalar("train_error/real/epoch", mean_error_real, e)
+        for jnt_i in range(len(pck_per_joint_real)):
+            writer.add_scalar("train_pck/real/epoch/joint_%d" % jnt_i, pck_per_joint_real[jnt_i], e)
         
     return mean_loss_syn, pck_acc_syn, mean_error_syn, \
            mean_loss_real, pck_acc_real, mean_error_real
@@ -270,10 +282,12 @@ def ssl_train(config, model, syn_train_loader, real_train_loader, val_loader,\
                               checkpoint_dir, writer, gamma, log_every_iters, vis_every_iters)
 
         # evaluate
-        test_acc, test_error = test.test_one_epoch(model, val_loader, metric, device)
+        test_acc, test_error, test_acc_per_joint = test.test_one_epoch(model, val_loader, metric, device)
         
         writer.add_scalar("test_pck/epoch", test_acc, e)
         writer.add_scalar("test_error/epoch", test_error, e)
+        for jnt_i in range(len(test_acc_per_joint)):
+            writer.add_scalar("test_pck/epoch/joint_%d" % jnt_i, test_acc_per_joint[jnt_i], e)
         
         print('Epoch: %03d | Train Loss: %f | Train Acc: %.3f | Train Error: %.3f | Test Acc: %.3f | Test Error: %.3f' \
               % (e, train_loss_real, train_acc_real, train_error_real, test_acc, test_error))

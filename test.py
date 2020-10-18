@@ -31,6 +31,8 @@ def test_one_epoch(model, val_loader, metric, device):
         total_samples = 0
         total_error = 0
         total_detected = 0
+        total_detected_per_joint = torch.zeros((17, )) # hardcoded
+        total_num_per_joint = torch.zeros((17, ))
         for iter_idx, (images_batch, proj_mats_batch, joints_3d_gt_batch, joints_3d_valid_batch, joints_2d_gt_batch, info_batch) \
             in enumerate(val_loader):
             
@@ -46,18 +48,24 @@ def test_one_epoch(model, val_loader, metric, device):
             batch_size = images_batch.shape[0]
             joints_3d_pred, joints_2d_pred, heatmaps_pred, confidences_pred = model(images_batch, proj_mats_batch)
 
-            detected, error, num_samples = utils_eval.eval_one_batch(metric, joints_3d_pred, joints_2d_pred, \
-                                                                     proj_mats_batch, joints_3d_gt_batch, joints_3d_valid_batch, \
-                                                                     joints_2d_gt_batch)
+            detected, error, num_samples, detected_per_joint, num_per_joint\
+                      = utils_eval.eval_one_batch(metric, joints_3d_pred, joints_2d_pred, \
+                                                  proj_mats_batch, joints_3d_gt_batch, joints_3d_valid_batch, \
+                                                  joints_2d_gt_batch)
 
             total_detected += detected
             total_error += num_samples * error
             total_samples += num_samples
 
+            total_detected_per_joint += detected_per_joint
+            total_num_per_joint += num_per_joint
+
         pck_acc = total_detected / total_samples # 2D
         mean_error = total_error / total_samples # 3D
 
-    return pck_acc, mean_error
+        pck_acc_per_joint = total_detected_per_joint / total_num_per_joint # 2D per joint
+
+    return pck_acc, mean_error, pck_acc_per_joint
 
 
 def syndata_test(config, model, dataloader, device, save_folder, \

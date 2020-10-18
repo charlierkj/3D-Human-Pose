@@ -51,11 +51,11 @@ def eval_one_batch(metric, joints_3d_pred, joints_2d_pred, \
         #detected, num_samples = metric(joints_2d_pred, proj_mats_batch, \
         #                               joints_3d_gt_batch, joints_3d_valid_batch)
         joints_2d_valid_batch = torch.ones(*joints_2d_pred.shape[0:3], 1).type(torch.bool).to(joints_2d_pred.device)
-        detected, num_samples = metric(joints_2d_pred, joints_2d_gt_batch, joints_2d_valid_batch)
+        detected, num_samples, detected_per_joint, num_per_joint = metric(joints_2d_pred, joints_2d_gt_batch, joints_2d_valid_batch)
     elif isinstance(metric, KeypointsL2Loss):
         error = metric(joints_3d_pred, joints_3d_gt_batch, joints_3d_valid_batch).item()
         num_samples = joints_3d_pred.shape[0]
-    return detected, error, num_samples # either total_joints, or total_frames
+    return detected, error, num_samples, detected_per_joint, num_per_joint # either total_joints, or total_frames
 
 
 def eval_pseudo_labels(dataset='human36m', separate=True): # hardcoded
