@@ -93,7 +93,8 @@ def train_one_epoch_ssl(config, model, syn_train_loader, real_train_loader, \
         real_joints_3d_pred, real_joints_2d_pred, real_heatmaps_pred, real_confidences_pred = model(real_images_batch, real_proj_mats_batch)
 
         pseudo_labels = np.load("pseudo_labels/%s_train.npy" % config.dataset.type, allow_pickle=True).item() # load pseudo labels
-        p = 0.2 * (e // 10 + 1) # percentage
+        # p = 0.2 * (e // 10 + 1) # percentage
+        p = 0.2 # hardcoded
         score_thresh = consistency.get_score_thresh(pseudo_labels, p, separate=True)
         real_joints_2d_pl_batch, real_joints_2d_valid_batch = \
                                  consistency.get_pseudo_labels(pseudo_labels, real_indexes, real_images_batch.shape[1], score_thresh)
