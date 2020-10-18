@@ -31,8 +31,8 @@ def test_one_epoch(model, val_loader, metric, device):
         total_samples = 0
         total_error = 0
         total_detected = 0
-        total_detected_per_joint = torch.zeros((17, )) # hardcoded
-        total_num_per_joint = torch.zeros((17, ))
+        total_detected_per_joint = torch.zeros((17, )).to(device) # hardcoded
+        total_num_per_joint = torch.zeros((17, )).to(device)
         for iter_idx, (images_batch, proj_mats_batch, joints_3d_gt_batch, joints_3d_valid_batch, joints_2d_gt_batch, info_batch) \
             in enumerate(val_loader):
             

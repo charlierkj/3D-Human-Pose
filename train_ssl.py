@@ -50,8 +50,8 @@ def train_one_epoch_ssl(config, model, syn_train_loader, real_train_loader, \
     total_detected_real = 0
     total_error_real = 0
     total_samples_real = 0 # num_joints or num_frames
-    total_detected_per_joint_real = torch.zeros((17, )) # hardcoded
-    total_num_per_joint_real = torch.zeros((17, )) # hardcoded
+    total_detected_per_joint_real = torch.zeros((17, )).to(device) # hardcoded
+    total_num_per_joint_real = torch.zeros((17, )).to(device) # hardcoded
 
     # jointly training
     joint_loader = zip(syn_train_loader, real_train_loader)

@@ -239,8 +239,8 @@ def syndata_collate_fn(batch):
     joints_3d_valid_batch = torch.stack([sample['joints_3d_valid'] for sample in samples], dim=0) # batch_size x num_joints x 1
     joints_2d_gt_batch = torch.stack([sample['joints_2d_gt'] for sample in samples], dim=0) # batch_size x num_views x num_joints x 2
 
-    images_batch, proj_mats_batch, joints_3d_gt_batch, joints_3d_valid_batch \
-                  = images_batch.type(torch.float32), proj_mats_batch.type(torch.float32), joints_3d_gt_batch.type(torch.float32), joints_3d_valid_batch.type(torch.float32)
+    images_batch, proj_mats_batch, joints_3d_gt_batch, joints_3d_valid_batch, joints_2d_gt_batch \
+                  = images_batch.type(torch.float32), proj_mats_batch.type(torch.float32), joints_3d_gt_batch.type(torch.float32), joints_3d_valid_batch.type(torch.float32), joints_2d_gt_batch.type(torch.float32)
     info_batch = [[sample['info'].split('_')[i] if (i==0) else int(sample['info'].split('_')[i]) for i in range(len(sample['info'].split('_')))] for sample in samples]
     return images_batch, proj_mats_batch, joints_3d_gt_batch, joints_3d_valid_batch, joints_2d_gt_batch, info_batch
 
