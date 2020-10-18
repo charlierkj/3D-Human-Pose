@@ -295,11 +295,11 @@ def real_test(config, model, dataloader, device, save_folder, \
                 proj_mats_batch = proj_mats_batch.to(device)
                 joints_3d_gt_batch = joints_3d_gt_batch.to(device)
                 joints_3d_valid_batch = joints_3d_valid_batch.to(device)
+            joints_2d_gt_batch = joints_2d_gt_batch.to(device)
 
             batch_size = images_batch.shape[0]
 
             joints_3d_pred, joints_2d_pred, heatmaps_pred, confidences_pred = model(images_batch, proj_mats_batch)
-            print(heatmaps_pred.max())
             preds["indexes"].append(indexes)
             preds["joints_3d"].append(joints_3d_pred.detach().cpu().numpy())
             preds["joints_2d"].append(joints_2d_pred.detach().cpu().numpy())
@@ -325,10 +325,9 @@ def real_test(config, model, dataloader, device, save_folder, \
                     im_hm.save(img_path)
 
             # evaluate
-            detected_pck, num_joints_2d = metric_pck(joints_2d_pred, proj_mats_batch, \
-                                                     joints_3d_gt_batch, joints_3d_valid_batch)
-            detected_pckh, _ = metric_pckh(joints_2d_pred, proj_mats_batch, \
-                                           joints_3d_gt_batch, joints_3d_valid_batch)
+            joints_2d_valid_batch = torch.ones(*joints_2d_pred.shape[0:3], 1).type(torch.bool).to(joints_2d_pred.device)
+            detected_pck, num_joints_2d, _, _ = metric_pck(joints_2d_pred, joints_2d_gt_batch, joints_2d_valid_batch)
+            detected_pckh, _, _, _ = metric_pckh(joints_2d_pred, joints_2d_gt_batch, joints_2d_valid_batch)
             detected_pck3d, num_joints_3d = metric_pck3d(joints_3d_pred, \
                                                          joints_3d_gt_batch, joints_3d_valid_batch)
             error = metric_error(joints_3d_pred, joints_3d_gt_batch, joints_3d_valid_batch).item()
@@ -436,6 +435,6 @@ if __name__ == "__main__":
                                                     num_workers=config.dataset.test.num_workers)
 
         # save_folder = os.path.join(os.getcwd(), 'results/human36m_%djnts' % config.model.backbone.num_joints)
-        human36m_test(config, model, dataloader, device, save_folder, \
-                      save_img=args.save_img, make_vid=False)
+        real_test(config, model, dataloader, device, save_folder, \
+                  save_img=args.save_img, make_vid=False)
 

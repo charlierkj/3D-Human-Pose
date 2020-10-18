@@ -63,7 +63,7 @@ class PCKh(nn.Module):
         detected = ((dist < self.thresh * head_length) * joints_2d_valid_batch).sum(dtype=torch.float32)
         # total_joints = num_views * (joints_3d_valid_batch == 1).sum()
         total_joints = (joints_2d_valid_batch == 1).sum()
-        detected_per_joint = ((dist < self.thresh * torso_diam) * joints_2d_valid_batch).sum(dim=(0, 1), dtype=torch.float32)
+        detected_per_joint = ((dist < self.thresh * head_length) * joints_2d_valid_batch).sum(dim=(0, 1), dtype=torch.float32)
         num_per_joint = (joints_2d_valid_batch == 1).sum(dim=(0, 1))
         return detected, total_joints, detected_per_joint, num_per_joint
 
