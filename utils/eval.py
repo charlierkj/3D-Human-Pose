@@ -9,7 +9,7 @@ from models.metric import PCK, PCKh
 
 import consistency
 
-from models.multiview import triangulate_point_from_multiple_views_linear_torch
+from utils.multiview import triangulate_point_from_multiple_views_linear_torch
 from utils.visualize import proj_to_2D_batch
 
 
@@ -122,7 +122,7 @@ def eval_pseudo_labels(dataset='human36m', separate=True, triangulate=True): # h
             num_valid_after = joints_2d_valid_batch.sum()
             print("Number of valid labels: before: %d, after: %d" % (num_valid_before, num_valid_after))
 
-        detected_pck, num_jnts = PCK()(joints_2d_pseudo, joints_2d_gt_batch, joints_2d_valid_batch)
+        detected_pck, num_jnts, _, _ = PCK()(joints_2d_pseudo, joints_2d_gt_batch, joints_2d_valid_batch)
 
         # detected_pckh, _ = PCKh(thresh=thresh)(joints_2d_pseudo, joints_2d_gt_batch, joints_2d_valid_batch)
 
@@ -146,7 +146,7 @@ def triangulate_pseudo_labels(proj_mats_batch, points_batch, points_valid_batch,
         points_valid = points_valid.squeeze(-1) # num_views x num_joints
         num_valid = points_valid.sum(0) # num_joints
         for j in range(num_joints):
-            if j <= 1:
+            if num_valid[j] <= 1:
                 continue
             views_valid = points_valid[:, j]
             points_3d = triangulate_point_from_multiple_views_linear_torch(proj_mats[views_valid, :, :], \
@@ -155,7 +155,7 @@ def triangulate_pseudo_labels(proj_mats_batch, points_batch, points_valid_batch,
             points_tr = proj_to_2D_batch(proj_mats[views_valid, :, :].unsqueeze(0), points_3d)
             points_tr = points_tr.view(-1, 2) # num_views x 2
             points_batch_tr[batch_i, views_valid, j, :] = points_tr
-            points_valid_batch_tr[batch_i, views_valid, j, :] = True
-            
+            points_valid_batch_tr[batch_i, :, j, :] = True
+
     return points_batch_tr, points_valid_batch_tr   
 
