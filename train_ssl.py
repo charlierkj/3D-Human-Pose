@@ -118,7 +118,8 @@ def train_one_epoch_ssl(config, model, syn_train_loader, real_train_loader, \
         """
 
         if isinstance(criterion, HeatmapMSELoss):
-            real_loss = criterion(real_heatmaps_pred, real_joints_2d_pl_batch, real_joints_2d_valid_batch)
+            # real_loss = criterion(real_heatmaps_pred, real_joints_2d_pl_batch, real_joints_2d_valid_batch)
+            real_loss = criterion(real_heatmaps_pred, real_joints_2d_gt_batch, real_joints_2d_valid_batch)
         else:
             raise ValueError("Please use 2D Heatmap Loss for training on real dataset!")
 
