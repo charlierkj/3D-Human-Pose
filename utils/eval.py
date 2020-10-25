@@ -9,6 +9,9 @@ from models.metric import PCK, PCKh
 
 import consistency
 
+from models.multiview import triangulate_point_from_multiple_views_linear_torch
+from utils.visualize import proj_to_2D_batch
+
 
 def evaluate_one_scene(joints_3d_pred_path, scene_folder, invalid_joints=(9, 16), path=True):
     """joints_3d_pred_path: the path where npy file is stored.
@@ -58,7 +61,11 @@ def eval_one_batch(metric, joints_3d_pred, joints_2d_pred, \
     return detected, error, num_samples, detected_per_joint, num_per_joint # either total_joints, or total_frames
 
 
-def eval_pseudo_labels(dataset='human36m', separate=True): # hardcoded
+def eval_pseudo_labels(dataset='human36m', separate=True, triangulate=True): # hardcoded
+
+    if dataset == 'mpii' and triangulate:
+        raise ValueError("MPII dataset is not multiview, please use multivew dataset.")
+    
     if dataset == 'human36m':
         train_set = dataset = Human36MMultiViewDataset(
             h36m_root="../learnable-triangulation-pytorch/data/human36m/processed/",
@@ -109,6 +116,12 @@ def eval_pseudo_labels(dataset='human36m', separate=True): # hardcoded
         joints_2d_pseudo, joints_2d_valid_batch = \
                           consistency.get_pseudo_labels(pseudo_labels, indexes, images_batch.shape[1], score_thresh)
 
+        if triangulate:
+            num_valid_before = joints_2d_valid_batch.sum()
+            joints_2d_pseudo, joints_2d_valid_batch = triangulate_pseudo_labels(proj_mats_batch, joints_2d_pseudo, joints_2d_valid_batch)
+            num_valid_after = joints_2d_valid_batch.sum()
+            print("Number of valid labels: before: %d, after: %d" % (num_valid_before, num_valid_after))
+
         detected_pck, num_jnts = PCK()(joints_2d_pseudo, joints_2d_gt_batch, joints_2d_valid_batch)
 
         # detected_pckh, _ = PCKh(thresh=thresh)(joints_2d_pseudo, joints_2d_gt_batch, joints_2d_valid_batch)
@@ -119,4 +132,30 @@ def eval_pseudo_labels(dataset='human36m', separate=True): # hardcoded
 
     print("PCK:", total_detected_pck / total_joints)
     # print("PCKh:", total_detected_pckh / total_joints)
+
+
+def triangulate_pseudo_labels(proj_mats_batch, points_batch, points_valid_batch, confidences_batch=None):
+    batch_size = points_batch.shape[0]
+    num_joints = points_batch.shape[2]
+    points_batch_tr = points_batch.clone()
+    points_valid_batch_tr = points_valid_batch.clone()
+    for batch_i in range(batch_size):
+        proj_mats = proj_mats_batch[batch_i] # num_views x 3 x 4
+        points = points_batch[batch_i] # num_views x num_joints x 2
+        points_valid = points_valid_batch[batch_i] # num_views x num_joints x 1
+        points_valid = points_valid.squeeze(-1) # num_views x num_joints
+        num_valid = points_valid.sum(0) # num_joints
+        for j in range(num_joints):
+            if j <= 1:
+                continue
+            views_valid = points_valid[:, j]
+            points_3d = triangulate_point_from_multiple_views_linear_torch(proj_mats[views_valid, :, :], \
+                                                                           points[views_valid, j, :])
+            points_3d = points_3d.view(1, 1, 3) # 1 x 1 x 3
+            points_tr = proj_to_2D_batch(proj_mats[views_valid, :, :].unsqueeze(0), points_3d)
+            points_tr = points_tr.view(-1, 2) # num_views x 2
+            points_batch_tr[batch_i, views_valid, j, :] = points_tr
+            points_valid_batch_tr[batch_i, views_valid, j, :] = True
+            
+    return points_batch_tr, points_valid_batch_tr   
 
