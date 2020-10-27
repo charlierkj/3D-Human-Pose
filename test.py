@@ -97,7 +97,7 @@ def syndata_test(config, model, dataloader, device, save_folder, \
 
     # metrics
     metric_pck = PCK()
-    metric_pckh = PCKh()
+    metric_pckh = PCKh(thresh=0.5)
     metric_pck3d = PCK3D()
     metric_error = KeypointsL2Loss()
 
@@ -268,7 +268,7 @@ def real_test(config, model, dataloader, device, save_folder, \
 
     # metrics
     metric_pck = PCK()
-    metric_pckh = PCKh()
+    metric_pckh = PCKh(thresh=1.0)
     metric_pck3d = PCK3D()
     metric_error = KeypointsL2Loss()
 
@@ -378,8 +378,8 @@ def real_test(config, model, dataloader, device, save_folder, \
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('--config', type=str, default="experiments/syndata/test/syndata_alg_17jnts.yaml")
-    parser.add_argument('--save_folder', type=str, default="results/syndata")
+    parser.add_argument('--config', type=str, default="experiments/human36m/test/human36m_alg_17jnts.yaml")
+    parser.add_argument('--save_folder', type=str, default="results/hm36m_17jnts")
     parser.add_argument('--save_img', action='store_true')
     args = parser.parse_args()
 
@@ -418,11 +418,13 @@ if __name__ == "__main__":
     elif config.dataset.type == "human36m":
         dataset = Human36MMultiViewDataset(
                     h36m_root=config.dataset.data_root,
+                    # train=True,
                     test=True,
                     image_shape=config.dataset.image_shape,
                     labels_path=config.dataset.labels_path,
                     with_damaged_actions=config.dataset.test.with_damaged_actions,
                     retain_every_n_frames=config.dataset.test.retain_every_n_frames,
+                    # retain_every_n_frames=10,
                     scale_bbox=config.dataset.test.scale_bbox,
                     kind="human36m",
                     undistort_images=config.dataset.test.undistort_images,

@@ -61,7 +61,7 @@ def eval_one_batch(metric, joints_3d_pred, joints_2d_pred, \
     return detected, error, num_samples, detected_per_joint, num_per_joint # either total_joints, or total_frames
 
 
-def eval_pseudo_labels(dataset='human36m', separate=True, triangulate=True): # hardcoded
+def eval_pseudo_labels(dataset='human36m', p=0.2, separate=True, triangulate=True): # hardcoded
 
     if dataset == 'mpii' and triangulate:
         raise ValueError("MPII dataset is not multiview, please use multivew dataset.")
@@ -102,7 +102,6 @@ def eval_pseudo_labels(dataset='human36m', separate=True, triangulate=True): # h
         pseudo_labels = np.load("pseudo_labels/mpii_train.npy", allow_pickle=True).item()
         thresh = 0.5
         
-    p = 0.2 # percentage
     score_thresh = consistency.get_score_thresh(pseudo_labels, p, separate=separate)
 
     total_joints = 0
@@ -124,14 +123,14 @@ def eval_pseudo_labels(dataset='human36m', separate=True, triangulate=True): # h
 
         detected_pck, num_jnts, _, _ = PCK()(joints_2d_pseudo, joints_2d_gt_batch, joints_2d_valid_batch)
 
-        # detected_pckh, _ = PCKh(thresh=thresh)(joints_2d_pseudo, joints_2d_gt_batch, joints_2d_valid_batch)
+        detected_pckh, _, _, _ = PCKh(thresh=thresh)(joints_2d_pseudo, joints_2d_gt_batch, joints_2d_valid_batch)
 
         total_joints += num_jnts
         total_detected_pck += detected_pck
-        # total_detected_pckh += detected_pckh
+        total_detected_pckh += detected_pckh
 
     print("PCK:", total_detected_pck / total_joints)
-    # print("PCKh:", total_detected_pckh / total_joints)
+    print("PCKh:", total_detected_pckh / total_joints)
 
 
 def triangulate_pseudo_labels(proj_mats_batch, points_batch, points_valid_batch, confidences_batch=None):

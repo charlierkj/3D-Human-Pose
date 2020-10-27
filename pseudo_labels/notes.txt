@@ -1,0 +1,16 @@
+Pseudo labels quality:
+
+Human3.6M:
+percentage = 0.2:
+  separate=True, triangulate=False:
+    PCK=0.9319, PCKh=0.8124
+
+  seperate=True, triangulate=True:
+    PCK=0.9217, PCKh=0.7648
+
+percentage = 0.1:
+  seperate=True, triangulate=False:
+    PCK=0.9351, PCKh=0.8185
+
+  seperate=True, triangulate=True:
+    PCK=0.9252, PCKh=0.7836

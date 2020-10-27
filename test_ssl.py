@@ -98,40 +98,48 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
     parser.add_argument('--config', type=str, default="experiments/human36m/test/human36m_alg_17jnts.yaml")
+    parser.add_argument('--mode', type=str, required=True, choices=["train", "test"])
     args = parser.parse_args()
 
     config = cfg.load_config(args.config)
-    config.dataset.train.retain_every_n_frames = 10
-    # config_1 = cfg.load_config(args.config)
-    # config_2 = cfg.load_config(args.config)
+    config.dataset.train.retain_every_n_frames = 1
+    config_1 = cfg.load_config(args.config)
+    config_2 = cfg.load_config(args.config)
 
-    # config_1.model.checkpoint = "./logs/exp_17jnts@19.09.2020-04.49.14/checkpoint/0019/weights.pth"
-    # config_2.model.checkpoint = "./logs/ssl_17jnts@26.09.2020-20.50.40/checkpoint/0007/weights.pth"
+    config_1.model.checkpoint = "./logs/exp_17jnts@19.09.2020-04.49.14/checkpoint/0019/weights.pth"
+    config_2.model.checkpoint = "./logs/ssl_human36m_17jnts@18.10.2020-02.22.10/checkpoint/0019/weights.pth"
     # print(config_1)
     # print(config_2)
 
     device = torch.device(0)
     print(device)
 
-    # model_1 = AlgebraicTriangulationNet(config_1, device=device)
-    # model_1 = torch.nn.DataParallel(model_1, device_ids=[0])
+    model_1 = AlgebraicTriangulationNet(config_1, device=device)
+    model_1 = torch.nn.DataParallel(model_1, device_ids=[0])
 
-    # model_2 = AlgebraicTriangulationNet(config_2, device=device)
-    # model_2 = torch.nn.DataParallel(model_2, device_ids=[0])
+    model_2 = AlgebraicTriangulationNet(config_2, device=device)
+    model_2 = torch.nn.DataParallel(model_2, device_ids=[0])
 
-    # print("Initializing model weights..")
-    # model_1 = train.load_pretrained_model(model_1, config_1)
-    # model_2 = train.load_pretrained_model(model_2, config_2)
+    print("Initializing model weights..")
+    model_1 = train.load_pretrained_model(model_1, config_1)
+    model_2 = train.load_pretrained_model(model_2, config_2)
 
     # load data
     print("Loading data..")
     pseudo_labels = np.load("pseudo_labels/%s_train.npy" % config.dataset.type, allow_pickle=True).item() # load pseudo labels
+    is_train = True if args.mode == "train" else False
 
-    # for si in [0, 3000, 6000, 9000, 12000, 20000, 40000, 60000, 80000, 100000]:
-    for si in [0, 2000, 4000, 6000, 8000, 10000]:
+    if is_train:
+        si_list = [0, 3000, 6000, 9000, 12000, 20000, 40000, 60000, 80000, 100000]
+    else:
+        si_list = [0, 400, 800, 1200, 1600, 2000]
+
+    for si in si_list:
+    # for si in [0, 2000, 4000, 6000, 8000, 10000]:
         dataset = Human36MMultiViewDataset(
                     h36m_root=config.dataset.data_root,
-                    train=True,
+                    train=is_train,
+                    test=not is_train,
                     image_shape=config.dataset.image_shape,
                     labels_path=config.dataset.labels_path,
                     with_damaged_actions=config.dataset.train.with_damaged_actions,
@@ -147,8 +155,8 @@ if __name__ == "__main__":
                                                     batch_size=config.dataset.train.batch_size, \
                                                     shuffle=config.dataset.train.shuffle, \
                                                     num_workers=config.dataset.train.num_workers)
-
-        save_folder = os.path.join('results/ssl_test/h36m', '%d' % si)
-        # test_one_scene_compare(model_1, model_2, dataloader, device, save_folder)
-        test_one_scene_pseudo(pseudo_labels, dataloader, save_folder, start_index=si)
+         
+        save_folder = os.path.join('results/ssl_test/compare_2/%s' % args.mode, '%d' % si)
+        test_one_scene_compare(model_1, model_2, dataloader, device, save_folder)
+        # test_one_scene_pseudo(pseudo_labels, dataloader, save_folder, start_index=si)
 

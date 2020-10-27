@@ -20,9 +20,9 @@ model:
 
   init_weights: true
   # checkpoint: "./data/pretrained/human36m/human36m_alg_10-04-2019/checkpoints/0060/weights.pth"
-  # checkpoint: "./logs/exp_17jnts@19.09.2020-04.49.14/checkpoint/0019/weights.pth"
+  checkpoint: "./logs/exp_17jnts@19.09.2020-04.49.14/checkpoint/0019/weights.pth"
   # checkpoint: "./logs/exp_17jnts@08.09.2020-11.01.07/checkpoint/0009/weights.pth"
-  checkpoint: "./logs/ssl_human36m_17jnts@18.10.2020-02.22.10/checkpoint/0002/weights.pth"
+  # checkpoint: "./logs/ssl_human36m_17jnts@18.10.2020-02.22.10/checkpoint/0019/weights.pth"
 
   use_confidences: true
   heatmap_multiplier: 1
