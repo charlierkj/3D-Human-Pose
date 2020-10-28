@@ -4,3 +4,4 @@ logs/
 results/
 test_vid/
 *.mp4
+!results/notes.txt
