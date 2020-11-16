@@ -1,5 +1,6 @@
 import numpy as np
 import torch
+import matplotlib.pyplot as plt
 
 from datasets.human36m import Human36MMultiViewDataset
 from datasets.mpii import Mpii
@@ -61,11 +62,12 @@ def eval_one_batch(metric, joints_3d_pred, joints_2d_pred, \
     return detected, error, num_samples, detected_per_joint, num_per_joint # either total_joints, or total_frames
 
 
-def eval_pseudo_labels(dataset='human36m', p=0.2, separate=True, triangulate=True): # hardcoded
+def eval_pseudo_labels(dataset='human36m', p=0.2, separate=True, triangulate=False): # hardcoded
 
     if dataset == 'mpii' and triangulate:
         raise ValueError("MPII dataset is not multiview, please use multivew dataset.")
     
+    print("Loading data ...")
     if dataset == 'human36m':
         train_set = dataset = Human36MMultiViewDataset(
             h36m_root="../learnable-triangulation-pytorch/data/human36m/processed/",
@@ -81,10 +83,11 @@ def eval_pseudo_labels(dataset='human36m', p=0.2, separate=True, triangulate=Tru
             crop=True,
         )
         train_loader = datasets_utils.human36m_loader(train_set, \
-                                                      batch_size=64, \
+                                                      # batch_size=64, \
+                                                      batch_size=4, \
                                                       shuffle=False, \
                                                       num_workers=4)
-        pseudo_labels = np.load("pseudo_labels/human36m_train.npy", allow_pickle=True).item()
+        pseudo_labels = np.load("pseudo_labels/human36m_train_every_10_frames.npy", allow_pickle=True).item()
         thresh = 1
         
     elif dataset == 'mpii':
@@ -102,11 +105,13 @@ def eval_pseudo_labels(dataset='human36m', p=0.2, separate=True, triangulate=Tru
         pseudo_labels = np.load("pseudo_labels/mpii_train.npy", allow_pickle=True).item()
         thresh = 0.5
         
+    print("Data loaded.")    
     score_thresh = consistency.get_score_thresh(pseudo_labels, p, separate=separate)
 
     total_joints = 0
     total_detected_pck = 0
     total_detected_pckh = 0
+    errors = torch.empty(0)
     for iter_idx, (images_batch, proj_mats_batch, joints_3d_gt_batch, joints_3d_valid_batch, joints_2d_gt_batch, indexes) in enumerate(train_loader):
         print(iter_idx)
         if images_batch is None:
@@ -122,15 +127,27 @@ def eval_pseudo_labels(dataset='human36m', p=0.2, separate=True, triangulate=Tru
             print("Number of valid labels: before: %d, after: %d" % (num_valid_before, num_valid_after))
 
         detected_pck, num_jnts, _, _ = PCK()(joints_2d_pseudo, joints_2d_gt_batch, joints_2d_valid_batch)
-
         detected_pckh, _, _, _ = PCKh(thresh=thresh)(joints_2d_pseudo, joints_2d_gt_batch, joints_2d_valid_batch)
+        diff = torch.sqrt(torch.sum((joints_2d_pseudo - joints_2d_gt_batch)**2, dim=-1, keepdims=True))
+        error_2d = diff[joints_2d_valid_batch]
+        errors = torch.cat((errors, error_2d))
 
         total_joints += num_jnts
         total_detected_pck += detected_pck
         total_detected_pckh += detected_pckh
 
+    errors = errors.cpu().numpy()
     print("PCK:", total_detected_pck / total_joints)
     print("PCKh:", total_detected_pckh / total_joints)
+    print("Error(2D):", errors.mean())
+
+    # plot histogram
+    plt.hist(errors, bins=100, density=True)
+    plt.title("2D error distribution in pseudo labels")
+    plt.xlabel("2D error (in pixel)")
+    plt.ylabel("density")
+    plt.savefig("figs/errors_pseudo_labels_%s.png" % dataset)
+    plt.close()
 
 
 def triangulate_pseudo_labels(proj_mats_batch, points_batch, points_valid_batch, confidences_batch=None):

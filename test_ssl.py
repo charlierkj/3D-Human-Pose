@@ -40,7 +40,7 @@ def test_one_scene_pseudo(pseudo_labels, dataloader, save_folder, start_index):
         indexes_abs = [idx + start_index for idx in indexes]
 
         p = 0.2 # percentage
-        score_thresh = consistency.get_score_thresh(pseudo_labels, p)
+        score_thresh = consistency.get_score_thresh(pseudo_labels, p, separate=True)
         joints_2d_pl_batch, joints_2d_valid_batch = \
                                  consistency.get_pseudo_labels(pseudo_labels, indexes_abs, images_batch.shape[1], score_thresh)
         
@@ -102,31 +102,31 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     config = cfg.load_config(args.config)
-    config.dataset.train.retain_every_n_frames = 1
-    config_1 = cfg.load_config(args.config)
-    config_2 = cfg.load_config(args.config)
+    config.dataset.train.retain_every_n_frames = 10
+    # config_1 = cfg.load_config(args.config)
+    # config_2 = cfg.load_config(args.config)
 
-    config_1.model.checkpoint = "./logs/exp_17jnts@19.09.2020-04.49.14/checkpoint/0019/weights.pth"
-    config_2.model.checkpoint = "./logs/ssl_human36m_17jnts@18.10.2020-02.22.10/checkpoint/0019/weights.pth"
+    # config_1.model.checkpoint = "./logs/exp_17jnts@19.09.2020-04.49.14/checkpoint/0019/weights.pth"
+    # config_2.model.checkpoint = "./logs/ssl_human36m_17jnts@18.10.2020-02.22.10/checkpoint/0019/weights.pth"
     # print(config_1)
     # print(config_2)
 
     device = torch.device(0)
     print(device)
 
-    model_1 = AlgebraicTriangulationNet(config_1, device=device)
-    model_1 = torch.nn.DataParallel(model_1, device_ids=[0])
+    # model_1 = AlgebraicTriangulationNet(config_1, device=device)
+    # model_1 = torch.nn.DataParallel(model_1, device_ids=[0])
 
-    model_2 = AlgebraicTriangulationNet(config_2, device=device)
-    model_2 = torch.nn.DataParallel(model_2, device_ids=[0])
+    # model_2 = AlgebraicTriangulationNet(config_2, device=device)
+    # model_2 = torch.nn.DataParallel(model_2, device_ids=[0])
 
     print("Initializing model weights..")
-    model_1 = train.load_pretrained_model(model_1, config_1)
-    model_2 = train.load_pretrained_model(model_2, config_2)
+    # model_1 = train.load_pretrained_model(model_1, config_1)
+    # model_2 = train.load_pretrained_model(model_2, config_2)
 
     # load data
     print("Loading data..")
-    pseudo_labels = np.load("pseudo_labels/%s_train.npy" % config.dataset.type, allow_pickle=True).item() # load pseudo labels
+    pseudo_labels = np.load("pseudo_labels/%s_train_every_10_frames.npy" % config.dataset.type, allow_pickle=True).item() # load pseudo labels
     is_train = True if args.mode == "train" else False
 
     if is_train:
@@ -134,8 +134,8 @@ if __name__ == "__main__":
     else:
         si_list = [0, 400, 800, 1200, 1600, 2000]
 
-    for si in si_list:
-    # for si in [0, 2000, 4000, 6000, 8000, 10000]:
+    # for si in si_list:
+    for si in [0, 2000, 4000, 6000, 8000, 10000]:
         dataset = Human36MMultiViewDataset(
                     h36m_root=config.dataset.data_root,
                     train=is_train,
@@ -156,7 +156,8 @@ if __name__ == "__main__":
                                                     shuffle=config.dataset.train.shuffle, \
                                                     num_workers=config.dataset.train.num_workers)
          
-        save_folder = os.path.join('results/ssl_test/compare_2/%s' % args.mode, '%d' % si)
-        test_one_scene_compare(model_1, model_2, dataloader, device, save_folder)
-        # test_one_scene_pseudo(pseudo_labels, dataloader, save_folder, start_index=si)
+        # save_folder = os.path.join('results/ssl_test/compare_2/%s' % args.mode, '%d' % si)
+        # test_one_scene_compare(model_1, model_2, dataloader, device, save_folder)
+        save_folder = 'results/ssl_test/h36m_pseudo_sep/%d' % si
+        test_one_scene_pseudo(pseudo_labels, dataloader, save_folder, start_index=si)
 
