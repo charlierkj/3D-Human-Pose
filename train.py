@@ -101,7 +101,7 @@ def train_one_epoch(model, train_loader, criterion, metric, opt, e, device, \
 
         batch_size = images_batch.shape[0]
 
-        joints_3d_pred, joints_2d_pred, heatmaps_pred, confidences_pred = model(images_batch, proj_mats_batch)
+        joints_3d_pred, joints_2d_pred, heatmaps_pred, confidences_pred, _ = model(images_batch, proj_mats_batch)
 
         # use predictions of invalid joints as groundtruth
         #joints_clone = ~(torch.squeeze(joints_3d_valid_batch, 2).type(torch.bool))

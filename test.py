@@ -46,7 +46,7 @@ def test_one_epoch(model, val_loader, metric, device):
                 joints_3d_valid_batch = joints_3d_valid_batch.to(device)
             joints_2d_gt_batch = joints_2d_gt_batch.to(device)
             batch_size = images_batch.shape[0]
-            joints_3d_pred, joints_2d_pred, heatmaps_pred, confidences_pred = model(images_batch, proj_mats_batch)
+            joints_3d_pred, joints_2d_pred, heatmaps_pred, confidences_pred, _ = model(images_batch, proj_mats_batch)
 
             detected, error, num_samples, detected_per_joint, num_per_joint\
                       = utils_eval.eval_one_batch(metric, joints_3d_pred, joints_2d_pred, \
@@ -127,7 +127,7 @@ def syndata_test(config, model, dataloader, device, save_folder, \
 
             batch_size = images_batch.shape[0]
             
-            joints_3d_pred, joints_2d_pred, heatmaps_pred, confidences_pred = model(images_batch, proj_mats_batch)
+            joints_3d_pred, joints_2d_pred, heatmaps_pred, confidences_pred, _ = model(images_batch, proj_mats_batch)
 
             # evaluate
             detected_pck, num_joints_2d = metric_pck(joints_2d_pred, proj_mats_batch, \
@@ -299,7 +299,7 @@ def real_test(config, model, dataloader, device, save_folder, \
 
             batch_size = images_batch.shape[0]
 
-            joints_3d_pred, joints_2d_pred, heatmaps_pred, confidences_pred = model(images_batch, proj_mats_batch)
+            joints_3d_pred, joints_2d_pred, heatmaps_pred, confidences_pred, _ = model(images_batch, proj_mats_batch)
             preds["indexes"].append(indexes)
             preds["joints_3d"].append(joints_3d_pred.detach().cpu().numpy())
             preds["joints_2d"].append(joints_2d_pred.detach().cpu().numpy())

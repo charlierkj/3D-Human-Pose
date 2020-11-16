@@ -79,8 +79,8 @@ def test_one_scene_compare(model_before, model_after, dataloader, device, save_f
 
             batch_size = images_batch.shape[0]
             
-            _, joints_2d_pred_before, _, _ = model_before(images_batch, proj_mats_batch)
-            _, joints_2d_pred_after, _, _ = model_after(images_batch, proj_mats_batch)
+            _, joints_2d_pred_before, _, _, _ = model_before(images_batch, proj_mats_batch)
+            _, joints_2d_pred_after, _, _, _ = model_after(images_batch, proj_mats_batch)
 
             for batch_i in range(batch_size):
                 vis = visualize.visualize_ssl(images_batch[batch_i], joints_2d_pred_before[batch_i], joints_2d_pred_after[batch_i])

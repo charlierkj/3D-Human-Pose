@@ -63,7 +63,7 @@ def consistency_ensemble(model, images_batch, proj_mats_batch, num_tfs=4):
     for i in range(num_tfs):
         if i==0:
             # original images
-            _, joints_2d_org, heatmaps_pred, _ = model(images_batch, proj_mats_batch)
+            _, joints_2d_org, heatmaps_pred, _, _ = model(images_batch, proj_mats_batch)
             num_joints = heatmaps_pred.shape[2]
             heatmap_shape = heatmaps_pred.shape[3:] # [h, w]
             heatmaps_pred = heatmaps_pred.view(batch_size * num_views, num_joints, *heatmap_shape)
@@ -88,7 +88,7 @@ def consistency_ensemble(model, images_batch, proj_mats_batch, num_tfs=4):
             images_warped = images_warped.view(batch_size, num_views, 3, *image_shape)
 
             # prediction of warped images
-            _, _, heatmaps_warped, _ = model(images_warped, proj_mats_batch)
+            _, _, heatmaps_warped, _, _ = model(images_warped, proj_mats_batch)
 
             # warping back heatmaps
             heatmap_center = torch.ones(batch_size * num_views, 2)

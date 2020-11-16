@@ -72,7 +72,7 @@ def train_one_epoch_ssl(config, model, syn_train_loader, real_train_loader, \
         syn_joints_3d_valid_batch = syn_joints_3d_valid_batch.to(device)
         syn_joints_2d_gt_batch = syn_joints_2d_gt_batch.to(device)
 
-        syn_joints_3d_pred, syn_joints_2d_pred, syn_heatmaps_pred, syn_confidences_pred = model(syn_images_batch, syn_proj_mats_batch)
+        syn_joints_3d_pred, syn_joints_2d_pred, syn_heatmaps_pred, syn_confidences_pred, _ = model(syn_images_batch, syn_proj_mats_batch)
 
         if isinstance(criterion, HeatmapMSELoss):
             syn_loss = criterion(syn_heatmaps_pred, syn_joints_2d_gt_batch)
@@ -90,7 +90,7 @@ def train_one_epoch_ssl(config, model, syn_train_loader, real_train_loader, \
             real_joints_3d_valid_batch = real_joints_3d_valid_batch.to(device)
         real_joints_2d_gt_batch = real_joints_2d_gt_batch.to(device)
 
-        real_joints_3d_pred, real_joints_2d_pred, real_heatmaps_pred, real_confidences_pred = model(real_images_batch, real_proj_mats_batch)
+        real_joints_3d_pred, real_joints_2d_pred, real_heatmaps_pred, real_confidences_pred, _ = model(real_images_batch, real_proj_mats_batch)
 
         pseudo_labels = np.load("pseudo_labels/%s_train.npy" % config.dataset.type, allow_pickle=True).item() # load pseudo labels
         # p = 0.2 * (e // 10 + 1) # percentage

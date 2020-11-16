@@ -42,9 +42,9 @@ class AlgebraicTriangulationNet(nn.Module):
 
         # forward backbone and integral
         if self.use_confidences:
-            heatmaps, _, alg_confidences, _ = self.backbone(images)
+            heatmaps, features, alg_confidences, _ = self.backbone(images)
         else:
-            heatmaps, _, _, _ = self.backbone(images)
+            heatmaps, features, _, _ = self.backbone(images)
             alg_confidences = torch.ones(batch_size * n_views, heatmaps.shape[1]).type(torch.float).to(device)
 
         heatmaps_before_softmax = heatmaps.view(batch_size, n_views, *heatmaps.shape[1:])
@@ -88,5 +88,9 @@ class AlgebraicTriangulationNet(nn.Module):
                 print("keypoints_2d_batch_pred =", keypoints_2d_batch_pred)
                 exit()
 
-        return keypoints_3d, keypoints_2d, heatmaps, alg_confidences
+        # reshape feature vectors
+        feat_shape = features.shape[1:]
+        features = features.view(batch_size, n_views, *feat_shape)
+
+        return keypoints_3d, keypoints_2d, heatmaps, alg_confidences, features
 
