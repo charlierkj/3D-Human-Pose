@@ -47,7 +47,7 @@ dataset:
   bbox: [160, 0, 1120, 960]
 
   train:
-    batch_size: 2
+    batch_size: 4
 
     with_aug: true
       

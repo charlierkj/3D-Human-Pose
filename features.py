@@ -16,8 +16,8 @@ import train
 
 def get_features(config, model, dataloader, device, label_path, write_path):
 
-    if os.path.exists(output_path):
-        print("File %s already exists" % output_path)
+    if os.path.exists(write_path):
+        print("File %s already exists" % write_path)
         return
 
     num_joints = config.model.backbone.num_joints
@@ -40,7 +40,7 @@ def get_features(config, model, dataloader, device, label_path, write_path):
     retval['features'] = []
 
     # re-configure data loader
-    data_loader.shuffle=False
+    dataloader.shuffle=False
 
     # load pseudo labels
     pseudo_labels = np.load(label_path, allow_pickle=True).item()
@@ -50,7 +50,7 @@ def get_features(config, model, dataloader, device, label_path, write_path):
     model = model.to(device)
     model.eval()
     with torch.no_grad():
-        for iter_idx, (images_batch, _, _, _, _, indexes) in enumerate(realloader):
+        for iter_idx, (images_batch, _, _, _, _, indexes) in enumerate(dataloader):
             if images_batch is None:
                 continue
                     
@@ -59,7 +59,6 @@ def get_features(config, model, dataloader, device, label_path, write_path):
             batch_size = images_batch.shape[0]
             num_views = images_batch.shape[1]
             image_shape = images_batch.shape[3:]
-            print(image_shape)
             assert batch_size == len(indexes)
             
             _, _, _, _, features = model(images_batch, None)
@@ -67,7 +66,7 @@ def get_features(config, model, dataloader, device, label_path, write_path):
             ratio_h = feature_shape[0] / image_shape[0]
             ratio_w = feature_shape[1] / image_shape[1]
             joints_2d_batch, _ = consistency.get_pseudo_labels(pseudo_labels, indexes, num_views, 0)
-            print(joints_2d_batch.shape)
+            joints_2d_batch = joints_2d_batch.cpu().numpy()
             feat_xs = (joints_2d_batch[:, :, :, 0] * ratio_w).astype(np.int32)
             feat_ys = (joints_2d_batch[:, :, :, 1] * ratio_h).astype(np.int32)
 
@@ -79,8 +78,7 @@ def get_features(config, model, dataloader, device, label_path, write_path):
                     feats_segment = np.empty(1, dtype=feats_dtype)
                     feats_segment['data_idx'] = data_idx
                     feats_segment['view_idx'] = view_idx
-                    feats_segment['feats'] = features[batch_idx, view_idx, :, feat_y, feat_x].cpu().numpy()
-                    print(feats_segment['feats'].shape)
+                    feats_segment['feats'] = np.transpose(features[batch_idx, view_idx, :, feat_y, feat_x].cpu().numpy())
 
                     retval['features'].append(feats_segment)
 
@@ -92,8 +90,8 @@ def get_features(config, model, dataloader, device, label_path, write_path):
     save_folder = "feats"
     os.makedirs(save_folder, exist_ok=True)
 
-    print("Saving features to %s" % os.path.join(save_folder, write_path))
-    np.save(os.path.join(save_folder, write_path), retval)
+    print("Saving features to %s" % write_path)
+    np.save(write_path, retval)
     print("Done.")
 
 
@@ -102,7 +100,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('--config', type=str, default="experiments/human36m/train/human36m_alg_17jnts.yaml")
     parser.add_argument('--label_path', type=str, default="pseudo_labels/human36m_train_every_10_frames.npy")
-    parser.add_argument('--write_path', type=str, default="/ft_human36m_train_every_10_frames.npy")
+    parser.add_argument('--write_path', type=str, default="feats/ft_human36m_train_every_10_frames.npy")
     args = parser.parse_args()
 
     config = cfg.load_config(args.config)
