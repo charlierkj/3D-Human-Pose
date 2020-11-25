@@ -1,4 +1,5 @@
 import os, sys
+import time
 import argparse
 import numpy as np
 import torch
@@ -13,8 +14,11 @@ import datasets.utils as datasets_utils
 import consistency
 import train
 
+from sklearn.manifold import TSNE
+import matplotlib.pyplot as plt
 
-def get_features(config, model, dataloader, device, label_path, write_path):
+
+def generate_features(config, model, dataloader, device, label_path, write_path):
 
     if os.path.exists(write_path):
         print("File %s already exists" % write_path)
@@ -95,6 +99,81 @@ def get_features(config, model, dataloader, device, label_path, write_path):
     print("Done.")
 
 
+def get_features(feats_npy, indexes, num_views, joints_2d_valid_batch):
+    data_indexes = feats_npy['features']['data_idx']
+    features_all = feats_npy['features']['feats']
+
+    batch_size = len(indexes)
+    num_joints = features_all.shape[1]
+    feature_dims = features_all.shape[2]
+
+    features_out = []
+    for jnt_idx in range(num_joints):
+        features_out.append(np.empty((0, feature_dims)))
+
+    for i, data_idx in enumerate(indexes):
+        features_seg = features_all[data_indexes==data_idx][0:num_views]
+        joints_2d_valid = joints_2d_valid_batch[i, 0:num_views, :, :].squeeze(-1)
+        for jnt_idx in range(num_joints):
+            features_jnt = features_seg[:, jnt_idx, :]
+            features_append = features_jnt[joints_2d_valid[:, jnt_idx]]
+            features_out[jnt_idx] = np.vstack((features_out[jnt_idx], features_append))
+    return features_out
+
+
+def plot_tSNE(dataloader, device, label_path, feat_path):
+    # re-configure data loader
+    dataloader.shuffle=False
+
+    # load pseudo labels and their features
+    pseudo_labels = np.load(label_path, allow_pickle=True).item()
+    feats_npy = np.load(feat_path, allow_pickle=True).item()
+    num_joints = pseudo_labels['num_joints']
+
+    # filtered features and detections in pseudo labels
+    features_pl = []
+    detections_pl = []
+    for jnt_idx in range(num_joints):
+        features_pl.append(np.empty((0, 256)))
+        detections_pl.append(np.empty(0,).astype(np.bool))
+
+    error_thresh = 20
+    p = 0.2
+    score_thresh = consistency.get_score_thresh(pseudo_labels, p, separate=True)
+    for iter_idx, (images_batch, _, _, _, joints_2d_gt_batch, indexes) in enumerate(dataloader):
+        if images_batch is None:
+            continue
+
+        joints_2d_pseudo, joints_2d_valid_batch = \
+                consistency.get_pseudo_labels(pseudo_labels, indexes, images_batch.shape[1], score_thresh)
+
+        features_batch = get_features(feats_npy, indexes, images_batch.shape[1], joints_2d_valid_batch)
+        detections = (torch.norm(joints_2d_pseudo - joints_2d_gt_batch, dim=-1, keepdim=True) < error_thresh)
+
+        for jnt_idx in range(num_joints):
+            detections_jnt = detections[:, :, jnt_idx, :][joints_2d_valid_batch[:, :, jnt_idx, :]]
+            features_pl[jnt_idx] = np.vstack((features_pl[jnt_idx], features_batch[jnt_idx]))
+            assert len(features_batch[jnt_idx]) == len(detections_jnt)
+            detections_pl[jnt_idx] = np.concatenate((detections_pl[jnt_idx], detections_jnt))
+    
+    # t-SNE visualization for each joint pseudo label
+    for jnt_idx in range(num_joints):
+        print("Joint %d:" % jnt_idx)
+        time_start = time.time()
+        tsne = TSNE(n_components=2)
+        tsne_results = tsne.fit_transform(features_pl[jnt_idx])
+        print("t-SNE done. Time elapsed: %f secs" % (time.time() - time_start))
+        # plot
+        pos = tsne_results[detections_pl[jnt_idx], :]
+        neg = tsne_results[~detections_pl[jnt_idx], :]
+        plt.title("t-SNE visualization")
+        plt.scatter(x=pos[:, 0], y=pos[:, 1], alpha=0.3, label="inlier")
+        plt.scatter(x=neg[:, 0], y=neg[:, 1], alpha=0.3, label="outlier")
+        plt.legend()
+        plt.savefig("figs/tsne_pseudo_labels_joint_%d.png" % jnt_idx)
+        plt.close()
+
+
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
@@ -138,5 +217,6 @@ if __name__ == "__main__":
                                                 shuffle=config.dataset.train.shuffle, \
                                                 num_workers=config.dataset.train.num_workers)
 
-    get_features(config, model, dataloader, device, args.label_path, args.write_path)
+    # generate_features(config, model, dataloader, device, args.label_path, args.write_path)
+    plot_tSNE(dataloader, device, args.label_path, args.write_path)
 
